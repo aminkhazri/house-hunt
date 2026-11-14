@@ -6,15 +6,15 @@
  *   GET  ?action=csv                        -> our current list as CSV (for Excel)
  *   GET  ?action=csv&include=removed        -> same, plus removed homes
  *   GET  ?action=lookup&url=REDFIN_URL      -> { ok, home } preview from a Redfin link (web or app short link)
- *   POST { action: "add",     home, passcode }    -> { ok, home }
- *   POST { action: "addRedfin", url, why, addedBy }  -> { ok, home }   (no passcode needed)
+ *   POST { action: "add",     home }              -> { ok, home }
+ *   POST { action: "addRedfin", url, why, addedBy }  -> { ok, home }
  *   POST { action: "remove",  id, reason, passcode } -> { ok }   (reason is saved in removedReason)
- *   POST { action: "move", id, direction: "up"|"down" } -> { ok, order: [ids] }   (no passcode needed)
- *   POST { action: "moveTo", id, position: 1..n }       -> { ok, order: [ids] }   (no passcode needed)
- *   POST { action: "restore", id,   passcode }    -> { ok }
- *   POST { action: "comment", id, name, text, passcode } -> { ok, comment }  (saved in the Comments tab)
+ *   POST { action: "move", id, direction: "up"|"down" } -> { ok, order: [ids] }
+ *   POST { action: "moveTo", id, position: 1..n }       -> { ok, order: [ids] }
+ *   POST { action: "restore", id }                -> { ok }
+ *   POST { action: "comment", id, name, text }    -> { ok, comment }  (saved in the Comments tab)
  *
- * Reading is open to anyone with the URL; writing needs the passcode stored
+ * Reading and most changes are open to anyone with the URL; only "remove" needs the passcode stored
  * in Script Properties (key: PASSCODE). Removing never deletes a row — it
  * just sets removed = TRUE, so every change can be undone from the sheet.
  *
@@ -103,9 +103,9 @@ function doPost(e) {
   try {
     const body = JSON.parse((e && e.postData && e.postData.contents) || "{}");
     const expected = PropertiesService.getScriptProperties().getProperty("PASSCODE");
-    // Adding a home and changing the order are open to anyone with the page (both easy to undo);
-    // every other change needs the family passcode.
-    const open = ["addRedfin", "move", "moveTo"].indexOf(body.action) >= 0;
+    // Only removing a home needs the family passcode. Adding, moving, commenting and
+    // bringing a home back are open to anyone with the page (all easy to undo).
+    const open = body.action !== "remove";
     if (!open && (!expected || String(body.passcode || "") !== expected)) {
       return json_({ ok: false, error: "bad_passcode" });
     }

@@ -506,8 +506,6 @@
       <textarea id="comment-text" rows="3" maxlength="500" placeholder="Loved the kitchen, worried about the stairs…"></textarea>
       <label for="comment-name">Your name</label>
       <input id="comment-name" type="text" autocomplete="given-name" placeholder="Rachel">
-      <div id="comment-pass-wrap"><label for="comment-pass">Family passcode</label>
-      <input id="comment-pass" type="password" autocomplete="off" style="width:100%"></div>
       <p class="error" id="comment-error" role="alert"></p>
       <div class="dialog-buttons">
         <button type="submit" class="btn" id="comment-go">Save comment</button>
@@ -545,9 +543,8 @@
      * the Sheet, so it disappears from this page, the Sheet's list and Excel.
      */
     const API = "https://script.google.com/macros/s/AKfycbxXkpTDH4GwIN1_SjLc3I_mfUkoZy30IMO069d4lkhVtEiCmKLiGbdsNgJvVpDmaQtw/exec";
-    // Remove and Add always ask for the passcode. Moving homes, Undo and "Bring it back"
-    // reuse one typed in the last few minutes, so they don't nag right after you typed it.
-    // Nothing is saved on the device: close the page and it's forgotten.
+    // Only Remove asks for the family passcode, every time. Everything else (add, move,
+    // comment, undo, bring back) works without it. Nothing is saved on the device.
     const PASS_MINUTES = 5;
     let recent = { pass: "", at: 0 };
     const recentPass = () => (Date.now() - recent.at < PASS_MINUTES * 60000 ? recent.pass : "");
@@ -720,6 +717,18 @@
       });
     }
 
+    /** Send a change that needs no passcode (everything except Remove). Returns the server's answer. */
+    async function send(action, id, extra = {}) {
+      const res = await fetch(API, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" }, // keeps it a simple request (no CORS preflight)
+        body: JSON.stringify({ action, id, ...extra }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Something went wrong.");
+      return data;
+    }
+
     /** Send a change to the Sheet. Asks for the passcode the first time, and again if it was wrong.
      *  Returns the server's answer, or false if the person cancelled. */
     async function save(action, id, extra = {}, typed = "") {
@@ -805,7 +814,7 @@
       const h = homes.find((x) => x.id === id);
       if (!h) return;
       try {
-        if (!(await save("restore", id))) return;
+        await send("restore", id);
         h.removed = false;
         h.removedReason = "";
         render();
@@ -1050,14 +1059,7 @@
       top5.querySelector(`li[data-id="${CSS.escape(id)}"]`)?.classList.add("flash");
       document.getElementById("home-" + id)?.classList.add("moved");
       try {
-        // Moving needs no passcode: anyone in the family can change the order.
-        const res = await fetch(API, {
-          method: "POST",
-          headers: { "Content-Type": "text/plain;charset=utf-8" },
-          body: JSON.stringify({ action: "moveTo", id, position: to + 1 }),
-        });
-        const ok = await res.json();
-        if (!ok.ok) throw new Error(ok.error || "failed");
+        await send("moveTo", id, { position: to + 1 }); // no passcode needed to change the order
         showToast(`${home.address} is now #${to + 1}.`);
       } catch (err) {
         before.forEach(([h, rank]) => { h.rank = rank; }); // put it back the way it was
@@ -1118,14 +1120,8 @@
           const name = $("add-name").value.trim();
           if (name) store.set("homehunt.name", name);
           if (!name) { go.textContent = "Add to our list"; $("add-error").textContent = "Please type your name."; $("add-name").focus(); return; }
-          // No passcode for adding: anyone in the family can add a home (and remove it later with the passcode).
-          const res = await fetch(API, {
-            method: "POST",
-            headers: { "Content-Type": "text/plain;charset=utf-8" },
-            body: JSON.stringify({ action: "addRedfin", url: found.redfinUrl, why: $("add-why").value.trim(), addedBy: name }),
-          });
-          const ok = await res.json();
-          if (!ok.ok) throw new Error(ok.error || "Sorry, that didn't save. Please try again in a minute.");
+          // No passcode for adding: anyone in the family can add a home (removing it needs the passcode).
+          const ok = await send("addRedfin", null, { url: found.redfinUrl, why: $("add-why").value.trim(), addedBy: name });
           $("add").close();
           await load();
           const row = document.querySelector(`tr[data-id="${CSS.escape(ok.home.id)}"]`) ||
@@ -1150,7 +1146,6 @@
       $("comment-form").reset();
       $("comment-home").textContent = commentFor.address + ", " + commentFor.city;
       $("comment-name").value = store.get("homehunt.name");
-      $("comment-pass-wrap").hidden = !!recentPass(); // just typed it? don't ask again
       $("comment-error").textContent = "";
       $("comment").showModal();
       $("comment-text").focus();
@@ -1161,25 +1156,18 @@
       e.preventDefault();
       const text = $("comment-text").value.trim();
       const name = $("comment-name").value.trim();
-      const pass = $("comment-pass-wrap").hidden ? recentPass() : $("comment-pass").value.trim();
       if (!text) { $("comment-error").textContent = "Please write your comment first."; return; }
-      if (!pass) { $("comment-pass-wrap").hidden = false; $("comment-error").textContent = "Please type the family passcode."; $("comment-pass").focus(); return; }
       if (name) store.set("homehunt.name", name);
       const go = $("comment-go");
       go.disabled = true; go.textContent = "Saving…";
       try {
-        const data = await save("comment", commentFor.id, { name, text }, pass);
+        const data = await send("comment", commentFor.id, { name, text });
         comments.push(data.comment);
         $("comment").close();
         render();
         showToast("Your comment was saved.");
       } catch (err) {
-        if (err.message === "bad_passcode") {
-          $("comment-pass-wrap").hidden = false; $("comment-pass").value = ""; $("comment-pass").focus();
-          $("comment-error").textContent = "That passcode didn't work. Please try again.";
-        } else {
-          $("comment-error").textContent = "Sorry, that didn't save. Please try again in a minute.";
-        }
+        $("comment-error").textContent = "Sorry, that didn't save. Please try again in a minute.";
       } finally {
         go.disabled = false; go.textContent = "Save comment";
       }
