@@ -67,6 +67,16 @@
     .rank { width: 52px; text-align: center; }
     .rank b { display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--sky); color: #fff; font-size: 1.1rem; font-weight: 900; }
     tr.top .rank b { background: var(--sun); color: var(--ink); }
+    .arrows { display: flex; justify-content: center; gap: 4px; margin-top: 6px; }
+    .arrow { width: 22px; height: 22px; padding: 0; border-radius: 6px; border: 2px solid #b9cfee; background: #fff; color: var(--sky); font-size: .65rem; line-height: 1; cursor: pointer; }
+    .arrow:hover:not(:disabled) { background: #e8f1fd; }
+    .arrow:disabled { opacity: .3; cursor: default; }
+    td.grab { cursor: grab; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+    td.grab img { -webkit-user-drag: none; pointer-events: none; }
+    tr.pressing td.grab { opacity: .75; }
+    tr.lifted td, tr.lifted + tr.c-row td { background: #e4efff !important; }
+    tr.lifted td:first-child { box-shadow: inset 8px 0 0 var(--sky) !important; }
+    tbody.sorting { cursor: grabbing; }
     .badge { display: block; margin-top: 4px; font-size: .7rem; line-height: 1.2; font-weight: 900; color: #8a6400; text-transform: uppercase; }
 
     .photo { width: 96px; }
@@ -141,7 +151,7 @@
     .drag-tip { margin: -4px 0 12px; color: var(--muted); font-size: 1rem; }
     .top5 li.flash .tile { animation: moved 1.2s ease-out; }
     .btn:disabled { opacity: .45; cursor: default; }
-    tr.moved td { animation: moved 1.2s ease-out; }
+    tr.moved td, tr.moved + tr.c-row td { animation: moved 1.2s ease-out; }
     @keyframes moved { 0%, 30% { background: #e4efff; } }
 
     @media (max-width: 1100px) {
@@ -242,6 +252,8 @@
       td[data-label]::before { content: attr(data-label); display: block; font-size: .8rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
       .rank { text-align: left; padding-top: 10px !important; display: flex !important; align-items: center; gap: 10px; }
       .rank b { flex: none; }
+      .arrows { margin: 0 0 0 auto; gap: 8px; }
+      .arrow { width: 40px; height: 34px; font-size: .9rem; }
       .badge { margin: 0; font-size: 1rem; }
       .photo { width: auto; }
       .photo img { width: 104px; height: 78px; }
@@ -267,7 +279,7 @@
 
     <section class="overview" aria-labelledby="top5-title">
       <h2 id="top5-title">Top 5 Homes</h2>
-      <p class="drag-tip">Press and hold a home, then drag it up or down to change the order.</p>
+      <p class="drag-tip">Press and hold a home, then drag it up or down to change the order. This works in the full list below too, or use the ▲ ▼ buttons.</p>
       <ol class="top5" id="top5"></ol>
     </section>
 
@@ -421,16 +433,18 @@
     const ourList = () => homes.filter((h) => h.rank && !h.removed).sort((a, b) => a.rank - b.rank);
     const removedList = () => homes.filter((h) => h.rank && h.removed);
 
-    function rowHtml(h, i) {
+    function rowHtml(h, i, all) {
+      const total = all.length;
       const was = originalPrice(h.originalPrice);
       const drop = was && was > h.price ? `<span class="drop">$${Math.round((was - h.price) / 1000)}K lower than before</span>` : "";
       const photo = safeUrl(h.photoUrl);
       const grade = String(h.safety || "?");
       return `
       <tr class="h-row${i === 0 ? " top" : ""}${i % 2 ? " alt" : ""}" data-id="${esc(h.id)}" id="home-${esc(h.id)}">
-        <td class="rank"><b>${i + 1}</b>${i === 0 ? '<span class="badge">★ Top choice</span>' : ""}</td>
-        <td class="photo">${photo ? `<img src="${esc(photo)}" alt="Front of ${esc(h.address)}" loading="${i < 3 ? "eager" : "lazy"}">` : ""}</td>
-        <td class="home" data-label="Home"><strong>${esc(h.address)}</strong><span>${esc(h.city)}, NC</span></td>
+        <td class="rank grab"><b>${i + 1}</b>${i === 0 ? '<span class="badge">★ Top choice</span>' : ""}
+          <span class="arrows"><button type="button" class="arrow" data-step="-1" data-id="${esc(h.id)}" aria-label="Move ${esc(h.address)} up"${i === 0 ? " disabled" : ""}>▲</button><button type="button" class="arrow" data-step="1" data-id="${esc(h.id)}" aria-label="Move ${esc(h.address)} down"${i === total - 1 ? " disabled" : ""}>▼</button></span></td>
+        <td class="photo grab">${photo ? `<img src="${esc(photo)}" alt="Front of ${esc(h.address)}" loading="${i < 3 ? "eager" : "lazy"}">` : ""}</td>
+        <td class="home grab" data-label="Home"><strong>${esc(h.address)}</strong><span>${esc(h.city)}, NC</span></td>
         <td class="price num" data-label="Price"><strong>${h.price ? money(h.price) : "—"}</strong>${drop}</td>
         <td class="num size" data-label="Size"><i>${h.beds ?? "?"} bed · ${h.baths ?? "?"} bath</i>${h.sqft ? `<i>${Number(h.sqft).toLocaleString("en-US")} sq ft</i>` : ""}${h.yearBuilt ? `<i class="yr">Built ${h.yearBuilt}</i>` : ""}</td>
         <td class="safety" data-label="Safety"><b class="${grade.startsWith("A") ? "" : "mid"}">${esc(grade)}</b></td>
@@ -711,6 +725,95 @@
       if (e.key === "Enter") document.getElementById("home-" + li.dataset.id)?.scrollIntoView({ behavior: "smooth", block: "center" });
     });
 
+    /* ---------- All our homes: press and hold a row, or use ▲ ▼ ---------- */
+    const rowsEl = $("rows");
+    const homeRows = () => [...rowsEl.querySelectorAll("tr.h-row")];
+    let rowPress = null;  // { tr, x, y, timer }
+    let rowDrag = null;   // { tr, from, y, scroller }
+
+    function cancelRowPress() {
+      if (!rowPress) return;
+      clearTimeout(rowPress.timer);
+      rowPress.tr.classList.remove("pressing");
+      rowPress = null;
+    }
+
+    rowsEl.addEventListener("pointerdown", (e) => {
+      if (e.button > 0 || !e.target.closest("td.grab") || e.target.closest("button, a")) return;
+      const tr = e.target.closest("tr.h-row");
+      rowPress = { tr, x: e.clientX, y: e.clientY };
+      tr.classList.add("pressing");
+      rowPress.timer = setTimeout(() => {
+        if (!rowPress) return;
+        rowPress.tr.classList.remove("pressing");
+        rowDrag = { tr, from: homeRows().indexOf(tr), y: rowPress.y };
+        rowPress = null;
+        tr.classList.add("lifted");
+        rowsEl.classList.add("sorting");
+        try { rowsEl.setPointerCapture(e.pointerId); } catch {}
+        if (navigator.vibrate) navigator.vibrate(25);
+        autoScroll();
+      }, HOLD_MS);
+    });
+
+    rowsEl.addEventListener("touchmove", (e) => { if (rowDrag) e.preventDefault(); }, { passive: false });
+
+    rowsEl.addEventListener("pointermove", (e) => {
+      if (rowPress && Math.hypot(e.clientX - rowPress.x, e.clientY - rowPress.y) > SLOP) cancelRowPress(); // scrolling
+      if (!rowDrag) return;
+      rowDrag.y = e.clientY;
+      placeRow();
+    });
+
+    /** Move the lifted home (and its comments strip) to wherever the finger is. */
+    function placeRow() {
+      const y = rowDrag.y;
+      const over = homeRows().find((tr) => {
+        if (tr === rowDrag.tr) return false;
+        const r = tr.getBoundingClientRect();
+        const bottom = tr.nextElementSibling.getBoundingClientRect().bottom; // include its comments strip
+        return y >= r.top && y <= bottom;
+      });
+      if (!over) return;
+      const list = homeRows();
+      const goingUp = list.indexOf(over) < list.indexOf(rowDrag.tr);
+      const strip = rowDrag.tr.nextElementSibling;
+      const anchor = goingUp ? over : over.nextElementSibling.nextElementSibling; // after over's strip
+      rowsEl.insertBefore(rowDrag.tr, anchor);
+      rowsEl.insertBefore(strip, anchor);
+      homeRows().forEach((tr, i) => { tr.querySelector(".rank b").textContent = i + 1; });
+    }
+
+    /** While dragging near the top or bottom of the screen, scroll the page so far-away spots are reachable. */
+    function autoScroll() {
+      if (!rowDrag) return;
+      const edge = 90, y = rowDrag.y;
+      const speed = y < edge ? -(edge - y) / 4 : y > innerHeight - edge ? (y - (innerHeight - edge)) / 4 : 0;
+      if (speed) { scrollBy(0, speed); placeRow(); }
+      rowDrag.scroller = requestAnimationFrame(autoScroll);
+    }
+
+    async function endRowDrag() {
+      cancelRowPress();
+      if (!rowDrag) return;
+      const { tr, from, scroller } = rowDrag;
+      cancelAnimationFrame(scroller);
+      rowDrag = null;
+      tr.classList.remove("lifted");
+      rowsEl.classList.remove("sorting");
+      const to = homeRows().indexOf(tr);
+      if (to !== from) await moveTo(tr.dataset.id, to);
+    }
+    ["pointerup", "pointercancel"].forEach((t) => rowsEl.addEventListener(t, endRowDrag));
+    rowsEl.addEventListener("contextmenu", (e) => { if (e.target.closest("td.grab")) e.preventDefault(); });
+
+    rowsEl.addEventListener("click", (e) => {
+      const btn = e.target.closest(".arrow");
+      if (!btn || btn.disabled) return;
+      const from = ourList().findIndex((h) => h.id === btn.dataset.id);
+      moveTo(btn.dataset.id, from + Number(btn.dataset.step));
+    });
+
     /** Put a home at spot `to` (0 = #1), show it right away, then save to the Sheet. */
     async function moveTo(id, to) {
       const list = ourList();
@@ -722,6 +825,7 @@
       list.forEach((h, n) => { h.rank = n + 1; });
       render();
       top5.querySelector(`li[data-id="${CSS.escape(id)}"]`)?.classList.add("flash");
+      document.getElementById("home-" + id)?.classList.add("moved");
       try {
         const ok = await save("moveTo", id, { position: to + 1 });
         if (!ok) throw new Error("cancelled");

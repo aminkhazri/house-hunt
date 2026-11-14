@@ -33,6 +33,10 @@ The web app also serves the current list as CSV at `…/exec?action=csv` (add `&
 
 Every add or remove in the Sheet or on the page then shows up in Excel automatically. Excel *reads* the list; changes happen on the page or in the Sheet.
 
+## Changing the order
+
+In the **Top 5** or the full **All our homes** list, press and hold a home (on its number, photo or address) and drag it up or down. While you drag near the top or bottom of the screen, the page scrolls for you. Or tap the ▲ ▼ buttons under a home's number to move it one spot. Either way the Sheet's `rank` column is renumbered 1, 2, 3…
+
 ## Comments
 
 Under each home there's a **💬 Add a comment** button. Comments go into a **Comments** tab in the Google Sheet (one row each: home id, name, comment, time) and show as small bubbles under the home. To delete one, delete its row in the Comments tab. The Excel feed has a "Family comments" column.
