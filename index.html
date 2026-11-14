@@ -38,7 +38,7 @@
 
     header { background: var(--sky); color: #fff; padding: 28px 0 24px; }
     header h1 { margin: 0; font-size: 2.2rem; font-weight: 900; line-height: 1.15; }
-    header p { margin: 6px 0 0; font-size: 1.15rem; opacity: .95; max-width: 60ch; }
+    header p { margin: 6px 0 0; font-size: 1.35rem; opacity: .95; max-width: 60ch; }
     .checked { display: inline-block; margin-top: 12px; background: rgb(255 255 255 / .18); padding: 4px 12px; border-radius: 999px; font-size: .95rem; }
 
     main { padding: 26px 0 48px; }
@@ -86,6 +86,8 @@
     .why p { margin: 0; }
     .why .watch { margin-top: 6px; color: #9a3412; }
     .why .watch::before { content: "Keep in mind: "; font-weight: 800; }
+    .why .notes { margin-top: 6px; color: #5b3d8a; }
+    .why .notes::before { content: "Our notes: "; font-weight: 800; }
     .deadline { display: inline-block; margin-top: 6px; background: #ffe1e1; color: #a11d1d; font-weight: 800; padding: 2px 10px; border-radius: 8px; }
 
     .links { width: 128px; }
@@ -213,15 +215,14 @@
 <body>
   <header>
     <div class="wrap">
-      <p class="hello">Welcome to</p>
       <h1>Rachel, Amin &amp; Aurora's Home Hunt</h1>
-      <p>Our family's favorite homes near Clayton, Angier and Willow Spring. Our top choice is #1, at the top of the list.</p>
-      <span class="checked" id="status-note">Loading our list…</span>
+      <p>Our favorite homes</p>
+      <span class="checked" id="status-note">Getting our list…</span>
     </div>
   </header>
 
   <main class="wrap">
-    <p class="how"><b>How to use this page:</b> tap <b>See photos</b> to see inside a home on Redfin, or <b>Map</b> to see where it is. If we don't want a home anymore, tap <b>Remove</b>. You can always bring it back. To change our order, <b>press and hold</b> on a home, then tap <b>Move up</b> or <b>Move down</b>.</p>
+    <p class="how">Tap <b>See photos</b> to look inside a home, or <b>Map</b> to see where it is. Want to change our order? <b>Press and hold</b> a home to move it up or down.</p>
 
     <section class="overview" aria-labelledby="top5-title">
       <h2 id="top5-title">Our Top 5 at a glance</h2>
@@ -373,8 +374,9 @@
         <td class="num size" data-label="Size">${h.beds ?? "?"} bed · ${h.baths ?? "?"} bath<br>${h.sqft ? Number(h.sqft).toLocaleString("en-US") + " sq ft" : ""}<br><span>${h.yearBuilt ? "Built " + h.yearBuilt : ""}</span></td>
         <td class="safety" data-label="Safety"><b class="${grade.startsWith("A") ? "" : "mid"}">${esc(grade)}</b></td>
         <td class="why" data-label="Why we like it">
-          <p>${esc(h.why || h.notes || "")}</p>
+          <p>${esc(h.why || "")}</p>
           ${h.watch ? `<p class="watch">${esc(h.watch)}</p>` : ""}
+          ${h.notes ? `<p class="notes">${esc(h.notes)}</p>` : ""}
           ${h.deadline ? `<span class="deadline">${esc(h.deadline)}</span>` : ""}
         </td>
         <td class="links">
@@ -416,7 +418,7 @@
         if (!data.ok) throw new Error(data.error);
         homes = data.homes;
         const when = new Date().toLocaleString("en-US", { month: "long", day: "numeric", hour: "numeric", minute: "2-digit" });
-        $("status-note").textContent = `Up to date as of ${when}`;
+        $("status-note").textContent = `Updated ${when}`;
         render();
       } catch (err) {
         $("status-note").textContent = "We couldn't load the list. Please refresh the page in a minute.";
