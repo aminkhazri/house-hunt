@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Rachel, Amin &amp; Aurora's Home Hunt</title>
   <meta name="description" content="Our family's favorite homes in North Carolina, with our top choice first.">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 48 48%27%3E%3Cpath d=%27M6 22 24 7l18 15M11 20v20h26V20%27 fill=%27none%27 stroke=%27%231e6fd9%27 stroke-width=%274%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 48 48%27%3E%3Cpath d=%27M6 22 24 7l18 15M11 20v20h26V20%27 fill=%27none%27 stroke=%27%2312355f%27 stroke-width=%274%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Nunito:wght@400;600;800;900&display=swap" rel="stylesheet">
   <style>
     /* One bright, readable table. Big text, high contrast, nothing hidden behind clicks. */
     :root {
@@ -302,6 +302,113 @@
     @media print {
       header { background: none !important; color: var(--ink); }
       .btn { border: 0; padding: 0; text-align: left; color: var(--ink); }
+    }
+    /* =====================================================================
+       Blueprint theme: navy "ink" on drafting paper, to match the header drawing.
+       These rules come last, so they restyle everything above without
+       touching the layout rules.
+       ===================================================================== */
+    :root {
+      --page: #f6f8fb;
+      --paper: #ffffff;
+      --ink: #16243a;
+      --navy: #12355f;
+      --muted: #5a6b80;
+      --line: #d3deec;
+      --rule: #b7c8de;          /* slightly darker "drawn" lines */
+      --sky: #1f4e8c;           /* links and buttons */
+      --sun: #e3b94f;           /* the #1 highlight, a softer gold */
+      --sun-soft: #fdf8ea;
+      --leaf: #2e7d4f;
+      --stripe: #fafcff;
+      --serif: "Fraunces", Georgia, "Times New Roman", serif;
+    }
+    body {
+      background-color: var(--page);
+      /* faint graph-paper grid, like the drawing in the header */
+      background-image:
+        linear-gradient(rgb(31 78 140 / .045) 1px, transparent 1px),
+        linear-gradient(90deg, rgb(31 78 140 / .045) 1px, transparent 1px);
+      background-size: 28px 28px;
+    }
+    a { color: var(--sky); }
+
+    header { border-bottom: 1px solid var(--rule); box-shadow: 0 3px 0 -2px var(--rule), 0 6px 0 -5px var(--rule); }
+    header h1, .overview h2, .list-head h2, dialog h2 { font-family: var(--serif); font-weight: 700; letter-spacing: -.01em; color: var(--navy); }
+    header h1 { font-size: 2.5rem; }
+    header p { color: #3b6496; font-weight: 600; }
+    .checked { background: transparent; color: var(--navy); border: 1px solid var(--rule); font-weight: 700; }
+    .drag-tip { font-size: .95rem; }
+
+    /* Table: thin drawn lines instead of heavy borders */
+    table { border: 1px solid var(--rule); border-radius: 14px; box-shadow: 0 1px 0 var(--line), 0 10px 30px rgb(18 53 95 / .06); }
+    thead th { background: #f2f6fb; color: var(--navy); font-size: .78rem; letter-spacing: .1em; border-bottom: 1px solid var(--rule); }
+    tbody tr.alt td { background: var(--stripe); }
+    tbody tr.c-row td { border-bottom: 1px solid var(--line); }
+    tbody tr.top td, tbody tr.top + tr.c-row td { background: var(--sun-soft); }
+    tbody tr.top td:first-child, tbody tr.top + tr.c-row td:first-child { box-shadow: inset 4px 0 0 var(--sun); }
+
+    .rank b { background: #fff; color: var(--navy); border: 2px solid var(--navy); font-family: var(--serif); }
+    tr.top .rank b { background: var(--sun); border-color: #c99b2e; color: var(--navy); }
+    .badge { color: #8a6a12; letter-spacing: .04em; }
+    .photo img, .top5 img { border: 1px solid var(--line); }
+    .home strong { color: var(--navy); }
+    .price strong { color: var(--ink); }
+    .safety b { background: var(--leaf); border-radius: 6px; }
+    .arrow { border: 1px solid var(--rule); color: var(--navy); border-radius: 6px; }
+    .arrow:hover:not(:disabled) { background: #eef3fa; }
+
+    /* Buttons: navy ink, outlined secondary, quiet Remove */
+    .btn { background: var(--navy); border: 1px solid var(--navy); border-radius: 10px; }
+    .btn.light { background: #fff; color: var(--navy); border-color: var(--rule); }
+    .btn.light:hover { background: #f2f6fb; filter: none; }
+    .btn.remove { background: transparent; color: #a5322a; border-color: #ead1ce; }
+    .btn.remove:hover { background: #fdf3f2; filter: none; }
+    .btn.danger { background: #a5322a; border-color: #a5322a; color: #fff; }
+    .add-btn { background: var(--navy); border-radius: 12px; box-shadow: 0 6px 18px rgb(18 53 95 / .22); font-size: 1.05rem; padding: 12px 20px; }
+    .add-btn:hover { filter: none; background: #0d2a4d; }
+
+    /* Comments: a notes strip under each home, set off by a dashed "drawing" line */
+    tbody tr.c-row td { padding: 0 10px 12px; }
+    .comments { padding: 8px 0 0 60px; border-top: 1px dashed var(--rule); gap: 6px 10px; margin-left: 52px; padding-left: 8px; }
+    .comments .c { background: #fff; border: 1px solid var(--line); border-left: 3px solid var(--sky); border-radius: 4px 10px 10px 4px; padding: 3px 10px; color: var(--ink); }
+    .comments .c b { color: var(--navy); }
+    .c-add { border: 0; background: none; padding: 3px 2px; color: var(--sky); font-weight: 800; text-decoration: underline; text-decoration-color: var(--rule); text-underline-offset: 3px; }
+    .c-add:hover { background: none; color: var(--navy); text-decoration-color: currentColor; }
+
+    /* Top 5 cards */
+    .top5 .tile { border: 1px solid var(--rule); border-radius: 14px; box-shadow: 0 6px 18px rgb(18 53 95 / .06); }
+    .top5 li:first-child .tile { border: 2px solid var(--sun); background: var(--sun-soft); }
+    .top5 .n { background: #fff; color: var(--navy); border: 2px solid var(--navy); font-family: var(--serif); }
+    .top5 li:first-child .n { background: var(--sun); border-color: #c99b2e; }
+    .top5 strong { color: var(--navy); }
+    .top5 .tile.dragging { outline: 2px solid var(--navy); }
+
+    /* Removed homes */
+    .removed { border: 1px dashed var(--rule); background: rgb(255 255 255 / .85); }
+    .removed summary { color: var(--navy); font-family: var(--serif); font-size: 1.1rem; }
+    .removed li { background: #fff; border: 1px solid var(--line); }
+
+    /* Dialogs, toast and the lifted card while dragging */
+    dialog { border: 1px solid var(--rule); }
+    dialog input, dialog textarea { border: 1px solid var(--rule); }
+    dialog input:focus, dialog textarea:focus { outline: 3px solid rgb(31 78 140 / .25); border-color: var(--sky); }
+    .preview { background: #f2f6fb; border: 1px solid var(--line); }
+    .toast { background: var(--navy); }
+    .toast button { background: var(--sun); }
+    table.ghost { border: 2px solid var(--navy); }
+    tr.lifted td:first-child { box-shadow: inset 4px 0 0 var(--rule) !important; }
+    :focus-visible { outline-color: var(--sun); }
+
+    @media (max-width: 1100px) {
+      table { border: 0; box-shadow: none; }
+      tbody tr.h-row { border: 1px solid var(--rule); border-bottom: 0; }
+      tbody tr.c-row { border: 1px solid var(--rule); border-top: 0; box-shadow: 0 8px 18px rgb(18 53 95 / .06); }
+      tbody tr.top, tbody tr.top + tr.c-row { border-color: var(--sun); border-width: 2px; }
+      tbody tr.c-row td { padding: 0 12px 12px; }
+      .comments { margin-left: 0; padding: 8px 0 0; }
+      header h1 { font-size: 1.9rem; }
+      tbody tr.top td:first-child, tbody tr.top + tr.c-row td:first-child { box-shadow: none; }
     }
   </style>
 </head>
