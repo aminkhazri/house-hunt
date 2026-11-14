@@ -33,9 +33,13 @@ The web app also serves the current list as CSV at `…/exec?action=csv` (add `&
 
 Every add or remove in the Sheet or on the page then shows up in Excel automatically. Excel *reads* the list; changes happen on the page or in the Sheet.
 
+## Comments
+
+Under each home there's a **💬 Add a comment** button. Comments go into a **Comments** tab in the Google Sheet (one row each: home id, name, comment, time) and show as small bubbles under the home. To delete one, delete its row in the Comments tab. The Excel feed has a "Family comments" column.
+
 ## The family passcode
 
-Every change goes through the Apps Script, which checks the passcode on the server. **Remove** and **Add** ask for it every time. Dragging in the Top 5, **Undo** and **Bring it back** reuse a passcode typed in the last 5 minutes, so they don't nag right after you typed it. Nothing is saved on the device: close the page and it's forgotten.
+Every change goes through the Apps Script, which checks the passcode on the server. **Remove** and **Add** ask for it every time. **Add a comment** asks too, unless you typed it in the last 5 minutes. Dragging in the Top 5, **Undo** and **Bring it back** reuse a passcode typed in the last 5 minutes, so they don't nag right after you typed it. Nothing is saved on the device: close the page and it's forgotten.
 
 ## How the top 10 were picked
 

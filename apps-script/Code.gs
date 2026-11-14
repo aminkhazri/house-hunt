@@ -12,6 +12,7 @@
  *   POST { action: "move", id, direction: "up"|"down", passcode } -> { ok, order: [ids] }
  *   POST { action: "moveTo", id, position: 1..n, passcode }       -> { ok, order: [ids] }
  *   POST { action: "restore", id,   passcode }    -> { ok }
+ *   POST { action: "comment", id, name, text, passcode } -> { ok, comment }  (saved in the Comments tab)
  *
  * Reading is open to anyone with the URL; writing needs the passcode stored
  * in Script Properties (key: PASSCODE). Removing never deletes a row — it
@@ -21,6 +22,8 @@
  */
 
 const SHEET_NAME = "Homes";
+const COMMENTS_SHEET = "Comments";
+const COMMENT_COLUMNS = ["id", "homeId", "name", "text", "at"];
 // Where setup() downloads the starter list from (the same file the site uses).
 const SEED_URL = "https://raw.githubusercontent.com/aminkhazri/house-hunt/main/explorer/data/homes.json";
 const COLUMNS = [
@@ -84,10 +87,10 @@ function doGet(e) {
   try {
     const p = (e && e.parameter) || {};
     const action = p.action || "list";
-    if (action === "csv") return csv_(readHomes_(), p.include === "removed");
+    if (action === "csv") return csv_(readHomes_(), p.include === "removed", readComments_());
     if (action === "lookup") return json_({ ok: true, home: redfinLookup_(p.url) });
     if (action !== "list") return json_({ ok: false, error: "Unknown action." });
-    return json_({ ok: true, homes: readHomes_() });
+    return json_({ ok: true, homes: readHomes_(), comments: readComments_() });
   } catch (err) {
     return json_({ ok: false, error: String(err.message || err) });
   }
@@ -110,6 +113,7 @@ function doPost(e) {
       case "moveTo": return json_({ ok: true, order: moveHome_(body.id, null, Number(body.position)) });
       case "remove": setRemoved_(body.id, true, body.reason); return json_({ ok: true });
       case "restore": setRemoved_(body.id, false); return json_({ ok: true });
+      case "comment": return json_({ ok: true, comment: addComment_(body) });
       default: return json_({ ok: false, error: "Unknown action." });
     }
   } catch (err) {
@@ -193,6 +197,46 @@ function setRemoved_(id, removed, reason) {
   sheet.getRange(row, col_(sheet, "removed")).setValue(removed);
   sheet.getRange(row, col_(sheet, "removedAt")).setValue(removed ? new Date().toISOString() : "");
   sheet.getRange(row, col_(sheet, "removedReason")).setValue(removed ? String(reason || "").trim().slice(0, 500) : "");
+}
+
+/* ---------- Comments ---------- */
+
+/** The Comments tab (one row per comment). Created the first time someone comments. */
+function commentsSheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(COMMENTS_SHEET);
+  if (!sheet) {
+    sheet = ss.insertSheet(COMMENTS_SHEET);
+    sheet.getRange(1, 1, 1, COMMENT_COLUMNS.length).setValues([COMMENT_COLUMNS])
+      .setFontWeight("bold").setBackground("#e8f1fd");
+    sheet.setFrozenRows(1);
+    sheet.getRange(1, 4, sheet.getMaxRows(), 1).setNumberFormat("@"); // keep comments as plain text
+  }
+  return sheet;
+}
+
+/** Every comment, oldest first. Rows you delete in the Sheet simply disappear from the page. */
+function readComments_() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(COMMENTS_SHEET);
+  if (!sheet || sheet.getLastRow() < 2) return [];
+  return sheet.getRange(2, 1, sheet.getLastRow() - 1, COMMENT_COLUMNS.length).getValues()
+    .filter((r) => r[1] !== "" && r[3] !== "")
+    .map((r) => ({
+      id: String(r[0]), homeId: String(r[1]), name: String(r[2]), text: String(r[3]),
+      at: r[4] instanceof Date ? r[4].toISOString() : String(r[4]),
+    }));
+}
+
+function addComment_(body) {
+  const text = String(body.text || "").trim().slice(0, 500);
+  const name = String(body.name || "").trim().slice(0, 40) || "Someone";
+  if (!text) throw new Error("Please write a comment first.");
+  const sheet = sheet_();
+  const ids = sheet.getRange(2, 1, Math.max(sheet.getLastRow() - 1, 1), 1).getValues().flat().map(String);
+  if (ids.indexOf(String(body.id)) < 0) throw new Error("Couldn't find that home. Refresh the page and try again.");
+  const comment = { id: Utilities.getUuid().slice(0, 8), homeId: String(body.id), name: name, text: text, at: new Date().toISOString() };
+  commentsSheet_().appendRow(COMMENT_COLUMNS.map((k) => comment[k]));
+  return comment;
 }
 
 /* ---------- Reorder ---------- */
@@ -365,13 +409,14 @@ function toRow_(home) {
  * Our list as CSV, ranked homes first (1, 2, 3...), then the rest by price.
  * Excel's Data → From Web reads this URL and can refresh it automatically.
  */
-function csv_(homes, includeRemoved) {
+function csv_(homes, includeRemoved, comments) {
+  const notesFor = (id) => (comments || []).filter((c) => c.homeId === id).map((c) => c.name + ": " + c.text).join(" | ");
   const list = homes
     .filter((h) => includeRemoved || !h.removed)
     .sort((a, b) => (a.rank || 999) - (b.rank || 999) || (a.price || 0) - (b.price || 0));
   const head = ["Rank", "Address", "Town", "Zip", "Price", "Beds", "Baths", "Sq Ft", "Year Built",
     "Safety", "Status", "Why we like it", "Keep in mind", "Deadline", "HOA $/mo",
-    "Elementary", "Middle", "High", "Redfin", "On our list", "Why we removed it"];
+    "Elementary", "Middle", "High", "Redfin", "On our list", "Why we removed it", "Family comments"];
   const cell = (v) => {
     const s = v == null ? "" : String(v);
     return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
@@ -379,7 +424,7 @@ function csv_(homes, includeRemoved) {
   const rows = list.map((h) => [
     h.rank || "", h.address, h.city, h.zip, h.price, h.beds, h.baths, h.sqft, h.yearBuilt,
     h.safety, h.status, h.why, h.watch, h.deadline, h.hoa,
-    h.elementary, h.middle, h.high, h.redfinUrl, h.removed ? "Removed" : "Yes", h.removed ? h.removedReason : "",
+    h.elementary, h.middle, h.high, h.redfinUrl, h.removed ? "Removed" : "Yes", h.removed ? h.removedReason : "", notesFor(h.id),
   ].map(cell).join(","));
   return ContentService.createTextOutput([head.join(",")].concat(rows).join("\n"))
     .setMimeType(ContentService.MimeType.CSV);
