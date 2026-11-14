@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Our Top 10 Homes</title>
-  <meta name="description" content="The 10 homes our family likes best, ranked with #1 at the top.">
+  <title>Rachel, Amin &amp; Aurora's Home Hunt</title>
+  <meta name="description" content="Our family's favorite homes in North Carolina, with our top choice first.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 48 48%27%3E%3Cpath d=%27M6 22 24 7l18 15M11 20v20h26V20%27 fill=%27none%27 stroke=%27%231e6fd9%27 stroke-width=%274%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -97,6 +97,38 @@
     .btn.light { background: #fff; color: var(--sky); }
     .btn:hover { filter: brightness(1.08); }
 
+    .hello { margin: 0 0 2px; font-size: 1.1rem; font-weight: 800; opacity: .9; }
+    .btn.remove { background: #fff; color: #b42318; border-color: #f3b8b2; font-size: .95rem; padding: 8px 10px; cursor: pointer; font-family: inherit; width: 100%; }
+    .btn.danger { background: #b42318; border-color: #b42318; color: #fff; }
+    tr.leaving td { opacity: 0; transition: opacity .4s; }
+    .empty { text-align: center; font-size: 1.2rem; color: var(--muted); padding: 30px 0; }
+    .toast[hidden], .removed[hidden], [hidden] { display: none !important; }
+
+    .removed { margin-top: 22px; background: var(--paper); border: 2px dashed var(--line); border-radius: 16px; padding: 14px 18px; }
+    .removed summary { cursor: pointer; font-weight: 800; }
+    .removed ul { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 10px; }
+    .removed li { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
+    .removed .btn { display: inline-block; margin: 0; padding: 8px 14px; cursor: pointer; font-family: inherit; font-size: 1rem; }
+
+    dialog { border: 0; border-radius: 20px; padding: 0; width: min(480px, 100% - 24px); box-shadow: 0 20px 60px rgb(0 0 0 / .25); color: var(--ink); }
+    dialog::backdrop { background: rgb(15 30 50 / .5); }
+    dialog form { padding: 24px; display: grid; gap: 12px; }
+    dialog h2 { margin: 0; font-size: 1.5rem; font-weight: 900; }
+    dialog p { margin: 0; }
+    dialog img { width: 100%; height: 200px; object-fit: cover; border-radius: 12px; }
+    dialog input { font: inherit; font-size: 1.3rem; padding: 12px 14px; border: 2px solid var(--line); border-radius: 12px; }
+    .dialog-buttons { display: grid; gap: 10px; margin-top: 6px; }
+    .dialog-buttons .btn { margin: 0; font-size: 1.15rem; padding: 14px; cursor: pointer; font-family: inherit; }
+    .error { color: #b42318; font-weight: 800; min-height: 1.2em; }
+
+    .toast {
+      position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 10;
+      width: min(560px, 100% - 24px); display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      background: var(--ink); color: #fff; padding: 16px 18px; border-radius: 16px; font-size: 1.05rem;
+      box-shadow: 0 10px 30px rgb(0 0 0 / .25);
+    }
+    .toast button { font: inherit; font-weight: 900; background: var(--sun); color: var(--ink); border: 0; border-radius: 10px; padding: 10px 18px; cursor: pointer; }
+
     footer { color: var(--muted); font-size: 1rem; padding: 8px 0 40px; }
     footer p { max-width: 70ch; }
 
@@ -130,17 +162,18 @@
 <body>
   <header>
     <div class="wrap">
-      <h1>Our Top 10 Homes</h1>
-      <p>The homes we like best near Clayton, Angier and Willow Spring. Our favorite, #1, is at the top.</p>
-      <span class="checked">Prices checked on Redfin: November 14, 2026</span>
+      <p class="hello">Welcome to</p>
+      <h1>Rachel, Amin &amp; Aurora's Home Hunt</h1>
+      <p>Our family's favorite homes near Clayton, Angier and Willow Spring. Our top choice is #1, at the top of the list.</p>
+      <span class="checked" id="status-note">Loading our list…</span>
     </div>
   </header>
 
   <main class="wrap">
-    <p class="how"><b>How to use this page:</b> tap <b>See photos</b> to see inside each home on Redfin, or <b>Map</b> to see where it is.</p>
+    <p class="how"><b>How to use this page:</b> tap <b>See photos</b> to see inside a home on Redfin, or <b>Map</b> to see where it is. If we don't want a home anymore, tap <b>Remove</b>. You can always bring it back.</p>
 
     <table>
-      <caption class="sr-only">Our top 10 homes, best first</caption>
+      <caption class="sr-only">Our favorite homes, best first</caption>
       <thead>
         <tr>
           <th scope="col">Rank</th>
@@ -155,127 +188,223 @@
       </thead>
       <tbody id="rows"></tbody>
     </table>
+    <p class="empty" id="empty" hidden>There are no homes on our list right now.</p>
+
+    <details class="removed" id="removed" hidden>
+      <summary>Homes we removed (<span id="removed-count">0</span>)</summary>
+      <ul id="removed-list"></ul>
+    </details>
   </main>
 
+  <dialog id="confirm" aria-labelledby="confirm-title">
+    <form method="dialog">
+      <img id="confirm-photo" alt="">
+      <h2 id="confirm-title">Remove this home?</h2>
+      <p id="confirm-text"></p>
+      <div class="dialog-buttons">
+        <button value="ok" class="btn danger">Yes, remove it</button>
+        <button value="cancel" class="btn light">No, keep it</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="passcode" aria-labelledby="pass-title">
+    <form id="pass-form">
+      <h2 id="pass-title">Family passcode</h2>
+      <p>To change our list, type the family passcode. Amin can tell you what it is. You'll only need to do this once on this device.</p>
+      <label for="pass-input" class="sr-only">Passcode</label>
+      <input id="pass-input" type="password" autocomplete="current-password" required>
+      <p class="error" id="pass-error" role="alert"></p>
+      <div class="dialog-buttons">
+        <button type="submit" class="btn">OK</button>
+        <button type="button" class="btn light" id="pass-cancel">Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" hidden><span id="toast-text"></span><button type="button" id="toast-undo">Undo</button></div>
+
   <footer class="wrap">
-    <p><b>How we picked:</b> we only included homes that are still for sale. Then we ranked them by neighborhood safety grade first, then by value (how much house you get for the price), the price itself, school ratings, size and age, and our own notes from looking at each listing.</p>
-    <p>Safety grades come from CrimeGrade.org (A+ is safest). Photos and prices come from Redfin.</p>
+    <p><b>How we picked:</b> we only included homes that were still for sale on Redfin on November 14. Then we ranked them by neighborhood safety grade first, then by value (how much house you get for the price), the price itself, school ratings, size and age, and our own notes from looking at each listing.</p>
+    <p>Safety grades come from CrimeGrade.org (A+ is safest). Photos and prices come from Redfin. Our list is kept in a Google Sheet, so a home removed here comes off the Sheet too.</p>
   </footer>
 
   <script>
     /*
-     * THE LIST. To change it, edit this array: the order here is the ranking.
-     * price and was are in dollars ("was" is the original asking price, or null).
+     * Our list lives in the "Homes" tab of the Google Sheet. This page asks the
+     * Sheet (through Apps Script) for every home that has a rank and hasn't been
+     * removed, then shows them in rank order. Remove marks the home removed in
+     * the Sheet, so it disappears from this page, the Sheet's list and Excel.
      */
-    const HOMES = [
-      {
-        address: "41 Bluejack Court", town: "Wendell", price: 360000, was: 576000,
-        beds: 4, baths: 3, sqft: 2680, built: 2021, safety: "A+",
-        why: "The most house for the money: big home on 1.27 acres at the end of a quiet cul-de-sac, fully fenced, and no city taxes. The price has come down a lot.",
-        watch: "A road (Covered Bridge Rd) runs behind the house, so check how noisy it is.",
-        deadline: "Offers due by Monday, Nov 16",
-        redfin: "https://www.redfin.com/NC/Wendell/41-Bluejack-Ct-27591/home/176180658",
-        photo: "https://ssl.cdn-redfin.com/photo/102/mbpaddedwide/497/genMid.10180497_7.jpg",
-      },
-      {
-        address: "117 Cinnabar Street", town: "Clayton", price: 364900, was: 405000,
-        beds: 4, baths: 2.5, sqft: 2223, built: 2026, safety: "A+",
-        why: "Brand-new home on a corner lot, next to a top-rated elementary school (Riverwood, 10 out of 10). The builder has already lowered the price.",
-        watch: "Ask what the HOA includes, such as the golf club.",
-        redfin: "https://www.redfin.com/NC/Clayton/117-Cinnabar-ST-27527/home/201006984",
-        photo: "https://ssl.cdn-redfin.com/photo/102/mbpaddedwide/369/genMid.10155369_5.jpg",
-      },
-      {
-        address: "399 Florence Drive", town: "Clayton", price: 399000, was: 412000,
-        beds: 5, baths: 3, sqft: 2815, built: 2010, safety: "A+",
-        why: "The most room on the list, with 5 bedrooms. It's on a quiet cul-de-sac with trees in the back yard.",
-        watch: "Near the top of the budget, and it's an older home in the neighborhood.",
-        redfin: "https://www.redfin.com/NC/Clayton/399-Florence-Dr-27527/home/43745747",
-        photo: "https://ssl.cdn-redfin.com/photo/102/mbpaddedwide/201/genMid.10193201_2.jpg",
-      },
-      {
-        address: "944 Walker Ridge Way", town: "Willow Spring", price: 379990, was: 403000,
-        beds: 4, baths: 2.5, sqft: 2423, built: 2026, safety: "A+",
-        why: "Brand-new home with nice landscaping and a private back yard. It has a basement for storage or future rooms.",
-        watch: "The basement is unfinished.",
-        redfin: "https://www.redfin.com/NC/Willow-Spring/944-Walker-Ridge-Way-27592/home/200202712",
-        photo: "https://ssl.cdn-redfin.com/photo/102/mbpaddedwide/420/genMid.10199420_0.jpg",
-      },
-      {
-        address: "479 Curling Creek Drive", town: "Clayton", price: 385000, was: 400000,
-        beds: 5, baths: 3.5, sqft: 2399, built: 2023, safety: "A+",
-        why: "Almost new, with a bedroom and full bathroom on the first floor. It backs up to private woods, with a playground just up the street.",
-        watch: "HOA is $82 a month.",
-        redfin: "https://www.redfin.com/NC/Clayton/479-Curling-Creek-Dr-27527/home/187212408",
-        photo: "https://ssl.cdn-redfin.com/photo/102/mbpaddedwide/225/genMid.10193225_6.jpg",
-      },
-      {
-        address: "273 Florence Drive", town: "Clayton", price: 325000, was: 365000,
-        beds: 4, baths: 2.5, sqft: 2428, built: 2009, safety: "A+",
-        why: "The lowest price on the list for a big 4-bedroom home, with trees in the back yard. The price has dropped $40,000.",
-        watch: "It used to be a rental, so the kitchen cabinets look worn. Plan for some updates.",
-        redfin: "https://www.redfin.com/NC/Clayton/273-Florence-Dr-27527/home/43746700",
-        photo: "https://ssl.cdn-redfin.com/photo/102/mbpaddedwide/735/genMid.10171735_0.jpg",
-      },
-      {
-        address: "909 Walker Ridge Way", town: "Willow Spring", price: 404990, was: null,
-        beds: 4, baths: 2.5, sqft: 2718, built: 2026, safety: "A+",
-        why: "The biggest new home on the list, on the same street as #4.",
-        watch: "The highest price here, and the seller hasn't lowered it since February.",
-        redfin: "https://www.redfin.com/NC/Willow-Spring/909-Walker-Ridge-Way-27592/home/200202716",
-        photo: "https://ssl.cdn-redfin.com/photo/102/mbpaddedwide/765/genMid.10191765_0.jpg",
-      },
-      {
-        address: "113 Cinnabar Street", town: "Clayton", price: 374900, was: 410000,
-        beds: 4, baths: 2.5, sqft: 2190, built: 2026, safety: "A+",
-        why: "Brand-new home on a corner lot, a few doors from #2, with the same top-rated schools.",
-        watch: "A little smaller than #2 and costs about $10,000 more.",
-        redfin: "https://www.redfin.com/NC/Clayton/113-Cinnabar-ST-27520/home/201102776",
-        photo: "https://ssl.cdn-redfin.com/photo/102/mbpaddedwide/139/genMid.10157139_A.jpg",
-      },
-      {
-        address: "112 Copenhaver Drive", town: "Clayton", price: 325000, was: null,
-        beds: 3, baths: 2.5, sqft: 1939, built: 2018, safety: "A",
-        why: "One of the two lowest prices, for a fairly new home in a well-kept neighborhood.",
-        watch: "Only 3 bedrooms, and the smallest home on the list.",
-        redfin: "https://www.redfin.com/NC/Clayton/112-W-Copenhaver-Dr-27527/home/160449278",
-        photo: "https://ssl.cdn-redfin.com/photo/102/mbpaddedwide/748/genMid.10187748_1.jpg",
-      },
-      {
-        address: "17 Wild Sage Circle", town: "Angier", price: 377700, was: null,
-        beds: 3, baths: 2.5, sqft: 2252, built: 2022, safety: "A+",
-        why: "Newer home on a nice corner lot, with room to fence in the yard.",
-        watch: "Only 3 bedrooms, and Angier is a bit farther out.",
-        redfin: "https://www.redfin.com/NC/Angier/17-Wild-Sage-Cir-27501/home/163303109",
-        photo: "https://ssl.cdn-redfin.com/photo/102/mbpaddedwide/667/genMid.10195667_3.jpg",
-      },
-    ];
+    const API = "https://script.google.com/macros/s/AKfycbxXkpTDH4GwIN1_SjLc3I_mfUkoZy30IMO069d4lkhVtEiCmKLiGbdsNgJvVpDmaQtw/exec";
+    const PASS_KEY = "homehunt.passcode";
 
-    const money = (n) => "$" + n.toLocaleString("en-US");
-    const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
-    const mapLink = (h) => "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(`${h.address}, ${h.town}, NC`);
+    let homes = [];     // every home from the Sheet
+    let pendingUndo = null;
 
-    document.getElementById("rows").innerHTML = HOMES.map((h, i) => {
-      const drop = h.was && h.was > h.price ? `<span class="drop">$${Math.round((h.was - h.price) / 1000)}K lower than before</span>` : "";
+    const $ = (id) => document.getElementById(id);
+    const money = (n) => "$" + Number(n).toLocaleString("en-US");
+    const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+    const safeUrl = (u) => /^https?:\/\//i.test(String(u || "")) ? String(u) : "";
+    const mapLink = (h) => "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(`${h.address}, ${h.city}, NC ${h.zip}`);
+    const store = {
+      get: (k) => { try { return localStorage.getItem(k) || ""; } catch { return ""; } },
+      set: (k, v) => { try { localStorage.setItem(k, v); } catch {} },
+      del: (k) => { try { localStorage.removeItem(k); } catch {} },
+    };
+
+    /** "$405K 3/26" -> 405000 (the original asking price), otherwise null. */
+    function originalPrice(text) {
+      const m = String(text || "").match(/\$\s*([\d.]+)\s*K/i);
+      return m ? Math.round(parseFloat(m[1]) * 1000) : null;
+    }
+
+    const ourList = () => homes.filter((h) => h.rank && !h.removed).sort((a, b) => a.rank - b.rank);
+    const removedList = () => homes.filter((h) => h.rank && h.removed);
+
+    function rowHtml(h, i) {
+      const was = originalPrice(h.originalPrice);
+      const drop = was && was > h.price ? `<span class="drop">$${Math.round((was - h.price) / 1000)}K lower than before</span>` : "";
+      const photo = safeUrl(h.photoUrl);
+      const grade = String(h.safety || "?");
       return `
-      <tr class="${i === 0 ? "top" : ""}">
+      <tr class="${i === 0 ? "top" : ""}" data-id="${esc(h.id)}">
         <td class="rank"><b>${i + 1}</b>${i === 0 ? '<span class="badge">★ Top choice</span>' : ""}</td>
-        <td class="photo"><img src="${esc(h.photo)}" alt="Front of ${esc(h.address)}" loading="${i < 3 ? "eager" : "lazy"}"></td>
-        <td class="home" data-label="Home"><strong>${esc(h.address)}</strong><span>${esc(h.town)}, NC</span></td>
-        <td class="price num" data-label="Price"><strong>${money(h.price)}</strong>${drop}</td>
-        <td class="num size" data-label="Size">${h.beds} bed · ${h.baths} bath<br>${h.sqft.toLocaleString("en-US")} sq ft<br><span>Built ${h.built}</span></td>
-        <td class="safety" data-label="Safety"><b class="${h.safety.startsWith("A") ? "" : "mid"}">${esc(h.safety)}</b></td>
+        <td class="photo">${photo ? `<img src="${esc(photo)}" alt="Front of ${esc(h.address)}" loading="${i < 3 ? "eager" : "lazy"}">` : ""}</td>
+        <td class="home" data-label="Home"><strong>${esc(h.address)}</strong><span>${esc(h.city)}, NC</span></td>
+        <td class="price num" data-label="Price"><strong>${h.price ? money(h.price) : "—"}</strong>${drop}</td>
+        <td class="num size" data-label="Size">${h.beds ?? "?"} bed · ${h.baths ?? "?"} bath<br>${h.sqft ? Number(h.sqft).toLocaleString("en-US") + " sq ft" : ""}<br><span>${h.yearBuilt ? "Built " + h.yearBuilt : ""}</span></td>
+        <td class="safety" data-label="Safety"><b class="${grade.startsWith("A") ? "" : "mid"}">${esc(grade)}</b></td>
         <td class="why" data-label="Why we like it">
-          <p>${esc(h.why)}</p>
+          <p>${esc(h.why || h.notes || "")}</p>
           ${h.watch ? `<p class="watch">${esc(h.watch)}</p>` : ""}
           ${h.deadline ? `<span class="deadline">${esc(h.deadline)}</span>` : ""}
         </td>
         <td class="links">
-          <a class="btn" href="${esc(h.redfin)}" target="_blank" rel="noopener">See photos</a>
+          ${safeUrl(h.redfinUrl) ? `<a class="btn" href="${esc(h.redfinUrl)}" target="_blank" rel="noopener">See photos</a>` : ""}
           <a class="btn light" href="${esc(mapLink(h))}" target="_blank" rel="noopener">Map</a>
+          <button type="button" class="btn remove" data-remove="${esc(h.id)}">Remove</button>
         </td>
       </tr>`;
-    }).join("");
+    }
+
+    function render() {
+      const list = ourList();
+      $("rows").innerHTML = list.map(rowHtml).join("");
+      $("empty").hidden = list.length > 0;
+      const gone = removedList();
+      $("removed").hidden = gone.length === 0;
+      $("removed-count").textContent = gone.length;
+      $("removed-list").innerHTML = gone.map((h) => `
+        <li><span><b>${esc(h.address)}</b>, ${esc(h.city)} · ${h.price ? money(h.price) : ""}</span>
+        <button type="button" class="btn light" data-restore="${esc(h.id)}">Bring it back</button></li>`).join("");
+    }
+
+    async function load() {
+      try {
+        const res = await fetch(API + "?action=list", { cache: "no-store" });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error);
+        homes = data.homes;
+        const when = new Date().toLocaleString("en-US", { month: "long", day: "numeric", hour: "numeric", minute: "2-digit" });
+        $("status-note").textContent = `Up to date as of ${when}`;
+        render();
+      } catch (err) {
+        $("status-note").textContent = "We couldn't load the list. Please refresh the page in a minute.";
+      }
+    }
+
+    /* ---------- Talking to the Sheet ---------- */
+    async function askPasscode(message) {
+      const dlg = $("passcode");
+      $("pass-error").textContent = message || "";
+      $("pass-input").value = "";
+      dlg.showModal();
+      $("pass-input").focus();
+      return new Promise((resolve) => {
+        const done = (value) => { $("pass-form").onsubmit = null; $("pass-cancel").onclick = null; dlg.close(); resolve(value); };
+        $("pass-form").onsubmit = (e) => { e.preventDefault(); const v = $("pass-input").value.trim(); if (v) done(v); };
+        $("pass-cancel").onclick = () => done(null);
+        dlg.oncancel = () => resolve(null);
+      });
+    }
+
+    /** Send a change to the Sheet. Asks for the passcode the first time, and again if it was wrong. */
+    async function save(action, id) {
+      let passcode = store.get(PASS_KEY) || await askPasscode();
+      while (passcode) {
+        const res = await fetch(API, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" }, // keeps it a simple request (no CORS preflight)
+          body: JSON.stringify({ action, id, passcode }),
+        });
+        const data = await res.json();
+        if (data.ok) { store.set(PASS_KEY, passcode); return true; }
+        if (data.error !== "bad_passcode") throw new Error(data.error || "Something went wrong.");
+        store.del(PASS_KEY);
+        passcode = await askPasscode("That passcode didn't work. Please try again.");
+      }
+      return false; // cancelled
+    }
+
+    /* ---------- Remove, undo, bring back ---------- */
+    function confirmRemove(h) {
+      const dlg = $("confirm");
+      $("confirm-title").textContent = `Remove ${h.address}?`;
+      $("confirm-text").textContent = "It will come off our list and the Google Sheet. You can bring it back anytime from the bottom of this page.";
+      const photo = safeUrl(h.photoUrl);
+      $("confirm-photo").hidden = !photo;
+      if (photo) { $("confirm-photo").src = photo; $("confirm-photo").alt = `Front of ${h.address}`; }
+      dlg.returnValue = "";
+      dlg.showModal();
+      return new Promise((resolve) => dlg.addEventListener("close", () => resolve(dlg.returnValue === "ok"), { once: true }));
+    }
+
+    function showToast(text, onUndo) {
+      clearTimeout(showToast.timer);
+      $("toast-text").textContent = text;
+      $("toast-undo").hidden = !onUndo;
+      $("toast-undo").onclick = () => { $("toast").hidden = true; onUndo && onUndo(); };
+      $("toast").hidden = false;
+      showToast.timer = setTimeout(() => { $("toast").hidden = true; }, 12000);
+    }
+
+    async function removeHome(id) {
+      const h = homes.find((x) => x.id === id);
+      if (!h || !(await confirmRemove(h))) return;
+      try {
+        if (!(await save("remove", id))) return;
+        h.removed = true;
+        const row = document.querySelector(`tr[data-id="${CSS.escape(id)}"]`);
+        row?.classList.add("leaving");
+        setTimeout(render, 400);
+        showToast(`${h.address} was removed.`, () => restoreHome(id));
+      } catch (err) {
+        showToast("Sorry, that didn't save. Please try again in a minute.");
+      }
+    }
+
+    async function restoreHome(id) {
+      const h = homes.find((x) => x.id === id);
+      if (!h) return;
+      try {
+        if (!(await save("restore", id))) return;
+        h.removed = false;
+        render();
+        showToast(`${h.address} is back on our list.`);
+      } catch (err) {
+        showToast("Sorry, that didn't save. Please try again in a minute.");
+      }
+    }
+
+    document.addEventListener("click", (e) => {
+      const rm = e.target.closest("[data-remove]");
+      if (rm) removeHome(rm.dataset.remove);
+      const back = e.target.closest("[data-restore]");
+      if (back) restoreHome(back.dataset.restore);
+    });
+
+    load();
   </script>
   <style>.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}</style>
 </body>

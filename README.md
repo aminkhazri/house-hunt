@@ -1,18 +1,31 @@
-# 🏡 Our Top 10 Homes: NC House Hunt
+# 🏡 Rachel, Amin & Aurora's Home Hunt
 
 **Live page:** https://aminkhazri.github.io/house-hunt/
 
-One bright, simple page for our family of four to see the homes we picked, ranked with **#1 at the top**. It was built for readers who aren't comfortable with technology: large text, one table, two buttons per home (**See photos** opens the Redfin listing, **Map** opens Google Maps), and nothing hidden behind menus. On phones and tablets each row becomes its own block with the same labels.
+One bright, simple page for our family of four to see the homes we picked, ranked with **#1 at the top**. It was built for readers who aren't comfortable with technology: large text, one table, and three buttons per home (**See photos** opens the Redfin listing, **Map** opens Google Maps, **Remove** takes it off our list). On phones and tablets each row becomes its own block with the same labels.
 
-## Updating the list
+## Where the list lives
 
-Everything lives in one file, `index.html`. Near the bottom is a list called `HOMES`, and **the order of that list is the ranking**.
+The page reads the **Homes** tab of our Google Sheet through the Apps Script web app (`apps-script/Code.gs`). A home is on the family page when its **`rank`** cell has a number and **`removed`** isn't `TRUE`. The page shows those homes sorted by rank.
 
-- **Change the order:** move a home's `{ ... }` block up or down.
-- **Remove a home:** delete its block, including the comma after it.
-- **Add a home:** copy a block, change the details, and paste it where it belongs.
+| You want to… | Do this |
+|---|---|
+| Remove a home | Tap **Remove** on the page (asks for the family passcode once per device). The Sheet's `removed` cell becomes `TRUE`. **Undo** or "Bring it back" reverses it. |
+| Change the order | Change the numbers in the `rank` column of the Sheet. |
+| Add a home | Add a row in the Homes tab (or use `/explorer/`), give it a `rank`, and fill in `why` / `watch`. |
+| Change the notes | Edit `why`, `watch` or `deadline` in the Sheet. |
 
-On GitHub you can do this in the browser: open `index.html`, click the ✏️ pencil, edit, then click **Commit changes**. The live page updates within a minute or so.
+Refresh the page to see changes.
+
+## Excel on your computer (live link)
+
+The web app also serves the current list as CSV at `…/exec?action=csv` (add `&include=removed` to also list removed homes). Excel can load that address and refresh it on its own:
+
+1. In Excel: **Data → From Web**, paste the CSV address, and click **OK → Load**.
+2. Right-click the table → **Table → External Data Properties → Query Properties** (on Mac: **Data → Refresh All → Connection Properties**).
+3. Tick **Refresh every 5 minutes** and **Refresh data when opening the file**, then click **OK**.
+
+Every add or remove in the Sheet or on the page then shows up in Excel automatically. Excel *reads* the list; changes happen on the page or in the Sheet.
 
 ## How the top 10 were picked
 
