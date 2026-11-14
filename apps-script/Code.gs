@@ -42,6 +42,9 @@ function setup() {
     Logger.log('A "%s" tab already exists, so the starter list was not re-imported.', SHEET_NAME);
   } else {
     sheet = ss.insertSheet(SHEET_NAME, 0);
+    // Store the label columns as plain text so Sheets doesn't turn them into dates.
+    ["list", "zip", "originalPrice", "daysOnMarket", "mls"].forEach((key) =>
+      sheet.getRange(1, COLUMNS.indexOf(key) + 1, sheet.getMaxRows(), 1).setNumberFormat("@"));
     sheet.getRange(1, 1, 1, COLUMNS.length).setValues([COLUMNS])
       .setFontWeight("bold").setBackground("#dcefe6");
     sheet.setFrozenRows(1);
@@ -118,7 +121,16 @@ function readHomes_() {
       const home = {};
       header.forEach((key, i) => {
         let v = row[i];
-        if (v instanceof Date) v = v.toISOString();
+        // Sheets auto-converts text like "October 2026" or "Added Nov 14" into dates.
+        // Turn the list label back into words; keep other dates as ISO strings.
+        if (v instanceof Date && key === "list") {
+          const tz = Session.getScriptTimeZone();
+          v = v.getDate() === 1
+            ? Utilities.formatDate(v, tz, "MMMM yyyy")
+            : "Added " + Utilities.formatDate(v, tz, "MMM d");
+        } else if (v instanceof Date) {
+          v = v.toISOString();
+        }
         if (key === "removed") v = v === true || String(v).toUpperCase() === "TRUE";
         else if (NUMBER_FIELDS.indexOf(key) >= 0) v = v === "" ? null : Number(v);
         else v = v === null ? "" : String(v);
