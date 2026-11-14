@@ -36,10 +36,19 @@
 
     .wrap { width: min(1240px, 100% - 32px); margin-inline: auto; }
 
-    header { background: var(--sky); color: #fff; padding: 28px 0 24px; }
-    header h1 { margin: 0; font-size: 2.2rem; font-weight: 900; line-height: 1.15; }
-    header p { margin: 6px 0 0; font-size: 1.35rem; opacity: .95; max-width: 60ch; }
-    .checked { display: inline-block; margin-top: 12px; background: rgb(255 255 255 / .18); padding: 4px 12px; border-radius: 999px; font-size: .95rem; }
+    /* Header: the blueprint house sits on the right; its white edges blend into the white background. */
+    header {
+      color: #12355f; padding: 44px 0 40px; min-height: 230px; border-bottom: 3px solid #cfe0f7;
+      background: #fff url("images/header.jpg") no-repeat right max(16px, calc((100% - 1240px) / 2)) bottom / auto 100%;
+    }
+    header h1 { margin: 0; font-size: 2.4rem; font-weight: 900; line-height: 1.15; text-shadow: 0 1px 0 #fff, 0 0 12px #fff; }
+    header p { margin: 6px 0 0; font-size: 1.35rem; max-width: 60ch; font-weight: 700; color: #2d5a8f; text-shadow: 0 0 10px #fff; }
+    .checked { display: inline-block; margin-top: 14px; background: #12355f; color: #fff; padding: 4px 12px; border-radius: 999px; font-size: .95rem; }
+    @media (max-width: 760px) {
+      /* Phones: the house fills the header behind the title, washed out so the words stay easy to read. */
+      header { min-height: 0; padding: 26px 0 22px; background:
+        linear-gradient(rgb(255 255 255 / .55), rgb(255 255 255 / .55)), #fff url("images/header.jpg") no-repeat center / cover; }
+    }
 
     main { padding: 26px 0 48px; }
     .how { margin: 0 0 18px; font-size: 1.05rem; color: var(--muted); }
@@ -71,9 +80,10 @@
     .arrow { width: 22px; height: 22px; padding: 0; border-radius: 6px; border: 2px solid #b9cfee; background: #fff; color: var(--sky); font-size: .65rem; line-height: 1; cursor: pointer; }
     .arrow:hover:not(:disabled) { background: #e8f1fd; }
     .arrow:disabled { opacity: .3; cursor: default; }
-    td.grab { cursor: grab; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+    tr.h-row { cursor: grab; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+    tr.h-row a, tr.h-row button { cursor: pointer; }
     td.grab img { -webkit-user-drag: none; pointer-events: none; }
-    tr.pressing td.grab { opacity: .75; }
+    tr.pressing td { opacity: .8; }
     tr.lifted td, tr.lifted + tr.c-row td { background: #e4efff !important; }
     tr.lifted td:first-child { box-shadow: inset 8px 0 0 var(--sky) !important; }
     tbody.sorting { cursor: grabbing; }
@@ -261,7 +271,7 @@
       .links .btn, .links .btn.remove { flex: 1; margin: 0; padding: 7px 8px; font-size: .9rem; }
     }
     @media print {
-      header { background: none; color: var(--ink); }
+      header { background: none !important; color: var(--ink); }
       .btn { border: 0; padding: 0; text-align: left; color: var(--ink); }
     }
   </style>
@@ -279,7 +289,7 @@
 
     <section class="overview" aria-labelledby="top5-title">
       <h2 id="top5-title">Top 5 Homes</h2>
-      <p class="drag-tip">Press and hold a home, then drag it up or down to change the order. This works in the full list below too, or use the ▲ ▼ buttons.</p>
+      <p class="drag-tip">Press and hold any home, here or in the list below, then drag it up or down to change the order. You can also tap ▲ ▼.</p>
       <ol class="top5" id="top5"></ol>
     </section>
 
@@ -737,7 +747,7 @@
     }
 
     rowsEl.addEventListener("pointerdown", (e) => {
-      if (e.button > 0 || !e.target.closest("td.grab") || e.target.closest("button, a")) return;
+      if (e.button > 0 || !e.target.closest("tr.h-row") || e.target.closest("button, a")) return;
       const tr = e.target.closest("tr.h-row");
       rowPress = { tr, x: e.clientX, y: e.clientY };
       tr.classList.add("pressing");
@@ -803,7 +813,7 @@
       if (to !== from) await moveTo(tr.dataset.id, to);
     }
     ["pointerup", "pointercancel"].forEach((t) => rowsEl.addEventListener(t, endRowDrag));
-    rowsEl.addEventListener("contextmenu", (e) => { if (e.target.closest("td.grab")) e.preventDefault(); });
+    rowsEl.addEventListener("contextmenu", (e) => { if (e.target.closest("tr.h-row")) e.preventDefault(); });
 
     rowsEl.addEventListener("click", (e) => {
       const btn = e.target.closest(".arrow");
