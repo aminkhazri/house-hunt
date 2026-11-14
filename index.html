@@ -212,9 +212,19 @@
     .removed { margin-top: 22px; background: var(--paper); border: 2px dashed var(--line); border-radius: 16px; padding: 14px 18px; }
     .removed summary { cursor: pointer; font-weight: 800; }
     .removed ul { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 10px; }
-    .removed li { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
-    .removed .reason { color: var(--muted); }
-    .removed .btn { display: inline-block; margin: 0; padding: 8px 14px; cursor: pointer; font-family: inherit; font-size: 1rem; }
+    .removed li { display: grid; grid-template-columns: 112px 1fr auto; gap: 14px; align-items: center; padding: 10px; border-radius: 14px; background: var(--stripe); }
+    .removed li img, .removed .nophoto { width: 112px; height: 80px; object-fit: cover; border-radius: 10px; background: var(--line); filter: grayscale(.35); display: grid; place-items: center; font-size: 2rem; }
+    .removed .info { display: grid; gap: 2px; font-size: .95rem; }
+    .removed .facts { color: var(--ink); }
+    .removed .reason { color: #9a3412; }
+    .removed .when { color: var(--muted); font-size: .85rem; }
+    .removed .acts { display: grid; gap: 6px; }
+    .removed .btn { display: block; margin: 0; padding: 6px 12px; cursor: pointer; font-family: inherit; font-size: .9rem; white-space: nowrap; }
+    @media (max-width: 760px) {
+      .removed li { grid-template-columns: 96px 1fr; }
+      .removed li img, .removed .nophoto { width: 96px; height: 72px; }
+      .removed .acts { grid-column: 1 / -1; grid-template-columns: 1fr 1fr; }
+    }
 
     dialog { border: 0; border-radius: 20px; padding: 0; width: min(480px, 100% - 24px); max-height: 92dvh; overflow: auto; box-shadow: 0 20px 60px rgb(0 0 0 / .25); color: var(--ink); }
     dialog::backdrop { background: rgb(15 30 50 / .5); }
@@ -511,10 +521,26 @@
       document.querySelectorAll(".why .clamp").forEach((p) => { p.nextElementSibling.hidden = p.scrollHeight <= p.clientHeight + 2; });
       $("removed").hidden = gone.length === 0;
       $("removed-count").textContent = gone.length;
-      $("removed-list").innerHTML = gone.map((h) => `
-        <li><span><b>${esc(h.address)}</b>, ${esc(h.city)} · ${h.price ? money(h.price) : ""}
-          ${h.removedReason ? `<br><span class="reason">Why: ${esc(h.removedReason)}</span>` : ""}</span>
-        <button type="button" class="btn light" data-restore="${esc(h.id)}">Bring it back</button></li>`).join("");
+      $("removed-list").innerHTML = gone.map((h) => {
+        const photo = safeUrl(h.photoUrl);
+        const facts = [h.price ? money(h.price) : "", `${h.beds ?? "?"} bed · ${h.baths ?? "?"} bath`,
+          h.sqft ? Number(h.sqft).toLocaleString("en-US") + " sq ft" : "", h.safety ? "Safety " + h.safety : ""].filter(Boolean).join(" · ");
+        const when = h.removedAt ? shortDate(h.removedAt) : "";
+        return `
+        <li>
+          ${photo ? `<img src="${esc(photo)}" alt="Front of ${esc(h.address)}" loading="lazy">` : `<span class="nophoto">🏠</span>`}
+          <div class="info">
+            <span><b>${esc(h.address)}</b>, ${esc(h.city)}</span>
+            <span class="facts">${facts}</span>
+            ${h.removedReason ? `<span class="reason">Why we removed it: ${esc(h.removedReason)}</span>` : ""}
+            ${when ? `<span class="when">Removed ${when}</span>` : ""}
+          </div>
+          <div class="acts">
+            ${safeUrl(h.redfinUrl) ? `<a class="btn light" href="${esc(h.redfinUrl)}" target="_blank" rel="noopener">Open in Redfin</a>` : ""}
+            <button type="button" class="btn light" data-restore="${esc(h.id)}">Bring it back</button>
+          </div>
+        </li>`;
+      }).join("");
     }
 
     async function load() {
