@@ -110,6 +110,12 @@
 
     .safety b { display: inline-block; min-width: 46px; text-align: center; padding: 2px 8px; border-radius: 8px; background: var(--leaf); color: #fff; font-weight: 900; }
     .safety b.mid { background: #c98a00; }
+    .safety { min-width: 128px; font-size: .8rem; line-height: 1.3; }
+    .safety span { display: block; margin-top: 3px; }
+    .safety .score { font-weight: 800; font-size: .85rem; }
+    .safety .pct { color: var(--muted); }
+    .safety .srank { color: var(--leaf); font-weight: 800; }
+    .safety .cg { display: inline-block; margin-top: 4px; font-weight: 800; }
 
     .why { min-width: 340px; font-size: .85rem; }
     .size i { display: block; font-style: normal; }
@@ -258,7 +264,7 @@
       tbody { font-size: .95rem; }
       tbody tr.h-row {
         display: grid; grid-template-columns: 104px 1fr 1fr; column-gap: 10px;
-        grid-template-areas: "rank rank rank" "photo home home" "photo price safety" "photo size size" "why why why" "links links links";
+        grid-template-areas: "rank rank rank" "photo home home" "photo price price" "photo size size" "safety safety safety" "why why why" "links links links";
         background: var(--paper); border: 2px solid var(--line); border-bottom: 0; border-radius: 16px 16px 0 0; overflow: hidden;
       }
       tbody tr.c-row { background: var(--paper); border: 2px solid var(--line); border-top: 0; border-radius: 0 0 16px 16px; margin-bottom: 14px; }
@@ -274,7 +280,10 @@
       .size { padding-top: 0 !important; }
       .badge { white-space: nowrap; }
       tbody tr.top + tr.c-row td:first-child { box-shadow: none; }
-      td.price[data-label]::before, td.safety[data-label]::before, td.size[data-label]::before, td.home[data-label]::before { display: none; }
+      td.price[data-label]::before, td.size[data-label]::before, td.home[data-label]::before { display: none; }
+      .safety { display: flex !important; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding-top: 8px !important; }
+      .safety::before { flex-basis: 100%; }
+      .safety span, .safety .cg { display: inline; margin: 0; }
       .comments { padding: 2px 0 10px; }
       tbody tr.top td { background: var(--sun-soft); }
       tbody tr.top td:first-child { box-shadow: none; }
@@ -418,7 +427,7 @@
 
   <footer class="wrap">
     <p><b>How we picked:</b> we only included homes that were still for sale on Redfin on November 14. Then we ranked them by neighborhood safety grade first, then by value (how much house you get for the price), the price itself, school ratings, size and age, and our own notes from looking at each listing.</p>
-    <p>Safety grades come from CrimeGrade.org (A+ is safest). Photos and prices come from Redfin. Our list is kept in a Google Sheet, so a home removed here comes off the Sheet too.</p>
+    <p>Safety grades come from CrimeGrade.org for each home's zip code (A+ is safest; the safety score runs from 0 to 1000) and are checked again every week. Photos and prices come from Redfin. Our list is kept in a Google Sheet, so a home removed here comes off the Sheet too.</p>
   </footer>
 
   <script>
@@ -438,6 +447,21 @@
 
     let homes = [];     // every home from the Sheet
     let comments = [];  // every comment from the Comments tab
+    let safetyByZip = {}; // CrimeGrade numbers for each zip code, from the Sheet's script
+
+    /** The home's area safety: CrimeGrade's zip-code grade if we have it, otherwise the grade saved in the Sheet. */
+    const crimeGradeUrl = (zip) => `https://crimegrade.org/safest-places-in-${encodeURIComponent(zip)}/`;
+    function safetyOf(h) {
+      const z = safetyByZip[h.zip];
+      return z ? { ...z, url: safeUrl(z.url) || crimeGradeUrl(h.zip) } : { grade: h.safety || "?", url: /^\d{5}$/.test(h.zip) ? crimeGradeUrl(h.zip) : "" };
+    }
+
+    /** Rank the areas (zip codes) on our list from safest to least safe by CrimeGrade's safety score. */
+    function areaRanks(list) {
+      const zips = [...new Set(list.map((h) => h.zip))].filter((z) => safetyByZip[z]?.score);
+      zips.sort((a, b) => safetyByZip[b].score - safetyByZip[a].score);
+      return { rankOf: (zip) => zips.indexOf(zip) + 1, count: zips.length };
+    }
     let pendingUndo = null;
 
     const $ = (id) => document.getElementById(id);
@@ -466,7 +490,9 @@
       const was = originalPrice(h.originalPrice);
       const drop = was && was > h.price ? `<span class="drop">$${Math.round((was - h.price) / 1000)}K lower than before</span>` : "";
       const photo = safeUrl(h.photoUrl);
-      const grade = String(h.safety || "?");
+      const sf = safetyOf(h);
+      const grade = String(sf.grade || "?");
+      const ar = areaRank(h.zip);
       return `
       <tr class="h-row${i === 0 ? " top" : ""}${i % 2 ? " alt" : ""}" data-id="${esc(h.id)}" id="home-${esc(h.id)}">
         <td class="rank grab"><b>${i + 1}</b>${i === 0 ? '<span class="badge">★ Top choice</span>' : ""}
@@ -475,7 +501,13 @@
         <td class="home grab" data-label="Home"><strong>${esc(h.address)}</strong><span>${esc(h.city)}, NC</span></td>
         <td class="price num" data-label="Price"><strong>${h.price ? money(h.price) : "—"}</strong>${drop}</td>
         <td class="num size" data-label="Size"><i>${h.beds ?? "?"} bed · ${h.baths ?? "?"} bath</i>${h.sqft ? `<i>${Number(h.sqft).toLocaleString("en-US")} sq ft</i>` : ""}${h.yearBuilt ? `<i class="yr">Built ${h.yearBuilt}</i>` : ""}</td>
-        <td class="safety" data-label="Safety"><b class="${grade.startsWith("A") ? "" : "mid"}">${esc(grade)}</b></td>
+        <td class="safety" data-label="Safety">
+          <b class="${grade.startsWith("A") ? "" : "mid"}">${esc(grade)}</b>
+          ${sf.score ? `<span class="score">${sf.score} / 1000</span>` : ""}
+          ${sf.saferThan ? `<span class="pct">Safer than ${sf.saferThan}% of US areas</span>` : ""}
+          ${ar ? `<span class="srank">${ar}</span>` : ""}
+          ${sf.url ? `<a class="cg" href="${esc(sf.url)}" target="_blank" rel="noopener">CrimeGrade ↗</a>` : ""}
+        </td>
         <td class="why" data-label="Why we like it">
           <p>${esc(h.why || "")}</p>
           ${h.watch ? `<p class="watch">${esc(h.watch)}</p>` : ""}
@@ -508,13 +540,20 @@
         ${photo ? `<img src="${esc(photo)}" alt="Front of ${esc(h.address)}">` : "<span></span>"}
         <strong>${esc(h.address)}</strong>
         <span class="p">${h.price ? money(h.price) : ""}</span>
-        <span class="t">${esc(h.city)} · ${h.beds ?? "?"} bed · Safety ${esc(h.safety || "?")}</span>
+        <span class="t">${esc(h.city)} · ${h.beds ?? "?"} bed · Safety ${esc(safetyOf(h).grade || "?")}</span>
       </div></li>`;
     }
 
+    let areaRank = () => "";
     function render() {
       const list = ourList();
       $("top5").innerHTML = list.slice(0, 5).map(top5Html).join("");
+      const ranks = areaRanks(list);
+      areaRank = (zip) => {
+        const n = ranks.rankOf(zip);
+        if (!n || ranks.count < 2) return "";
+        return n === 1 ? "★ Safest area on our list" : `#${n} of ${ranks.count} areas on our list`;
+      };
       $("rows").innerHTML = list.map(rowHtml).join("");
       $("empty").hidden = list.length > 0;
       const gone = removedList();
@@ -524,7 +563,7 @@
       $("removed-list").innerHTML = gone.map((h) => {
         const photo = safeUrl(h.photoUrl);
         const facts = [h.price ? money(h.price) : "", `${h.beds ?? "?"} bed · ${h.baths ?? "?"} bath`,
-          h.sqft ? Number(h.sqft).toLocaleString("en-US") + " sq ft" : "", h.safety ? "Safety " + h.safety : ""].filter(Boolean).join(" · ");
+          h.sqft ? Number(h.sqft).toLocaleString("en-US") + " sq ft" : "", safetyOf(h).grade && safetyOf(h).grade !== "?" ? "Safety " + safetyOf(h).grade : ""].filter(Boolean).join(" · ");
         const when = h.removedAt ? shortDate(h.removedAt) : "";
         return `
         <li>
@@ -550,6 +589,7 @@
         if (!data.ok) throw new Error(data.error);
         homes = data.homes;
         comments = data.comments || [];
+        safetyByZip = data.safety || {};
         const when = new Date().toLocaleString("en-US", { month: "long", day: "numeric", hour: "numeric", minute: "2-digit" });
         $("status-note").textContent = `Updated ${when}`;
         render();

@@ -87,10 +87,12 @@ function doGet(e) {
   try {
     const p = (e && e.parameter) || {};
     const action = p.action || "list";
-    if (action === "csv") return csv_(readHomes_(), p.include === "removed", readComments_());
+    if (action === "csv") { const hs = readHomes_(); return csv_(hs, p.include === "removed", readComments_(), safetyFor_(hs.filter((h) => h.rank).map((h) => h.zip))); }
     if (action === "lookup") return json_({ ok: true, home: redfinLookup_(p.url) });
     if (action !== "list") return json_({ ok: false, error: "Unknown action." });
-    return json_({ ok: true, homes: readHomes_(), comments: readComments_() });
+    const homes = readHomes_();
+    const zips = homes.filter((h) => h.rank).map((h) => h.zip);
+    return json_({ ok: true, homes: homes, comments: readComments_(), safety: safetyFor_(zips) });
   } catch (err) {
     return json_({ ok: false, error: String(err.message || err) });
   }
@@ -200,6 +202,74 @@ function setRemoved_(id, removed, reason) {
   sheet.getRange(row, col_(sheet, "removed")).setValue(removed);
   sheet.getRange(row, col_(sheet, "removedAt")).setValue(removed ? new Date().toISOString() : "");
   sheet.getRange(row, col_(sheet, "removedReason")).setValue(removed ? String(reason || "").trim().slice(0, 500) : "");
+}
+
+/* ---------- Safety grades from CrimeGrade (by zip code) ---------- */
+
+const SAFETY_DAYS = 7; // look each zip up again after a week
+
+/** CrimeGrade's page for a zip code, e.g. https://crimegrade.org/safest-places-in-27527/ */
+function crimeGradeUrl_(zip) {
+  return "https://crimegrade.org/safest-places-in-" + zip + "/";
+}
+
+/**
+ * Grades for each zip code: { "27527": { grade, score, saferThan, violent, property, url, checked } }.
+ * Saved in Script Properties so we only ask CrimeGrade about a zip once a week.
+ */
+function safetyFor_(zips) {
+  const props = PropertiesService.getScriptProperties();
+  const out = {};
+  const unique = zips.filter((z, i) => /^\d{5}$/.test(z) && zips.indexOf(z) === i);
+  unique.forEach((zip) => {
+    const key = "SAFETY_" + zip;
+    let info = null;
+    try { info = JSON.parse(props.getProperty(key) || "null"); } catch (e) { info = null; }
+    const stale = !info || Date.now() - new Date(info.checked).getTime() > SAFETY_DAYS * 864e5;
+    if (stale) {
+      try {
+        const fresh = crimeGradeLookup_(zip);
+        if (fresh) { info = fresh; props.setProperty(key, JSON.stringify(info)); }
+      } catch (e) { /* keep the old numbers if CrimeGrade is down */ }
+    }
+    if (info) out[zip] = info;
+  });
+  return out;
+}
+
+/** Read the zip's CrimeGrade page and pull out the grades and safety scores. */
+function crimeGradeLookup_(zip) {
+  const res = UrlFetchApp.fetch(crimeGradeUrl_(zip), {
+    muteHttpExceptions: true,
+    headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36" },
+  });
+  if (res.getResponseCode() !== 200) return null;
+  // Turn the HTML into plain text: drop styles/scripts, then tags, then squeeze the spaces.
+  const text = res.getContentText()
+    .replace(/<(style|script)[\s\S]*?<\/\1>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&trade;|&#8482;/g, "™").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&")
+    .replace(/\s+/g, " ");
+  // e.g. "its overall CrimeGrade™ is A, safer than the neighborhoods where 72% of Americans live.
+  //       Violent crime grades A+ and property crime A."  or  "...Violent and property crime both grade A here."
+  const overall = text.match(/overall CrimeGrade\S* (?:is|of) ([A-F][+-]?)/);
+  if (!overall) return null;
+  const pct = text.match(/where (\d+)% of Americans live/);
+  const both = text.match(/Violent and property crime both grade ([A-F][+-]?)/);
+  const split = text.match(/Violent crime grades ([A-F][+-]?) and property crime ([A-F][+-]?)/);
+  const scores = [];
+  const re = /Safety score (\d+) of 1,000/g;
+  let m;
+  while ((m = re.exec(text)) && scores.length < 3) scores.push(Number(m[1]));
+  return {
+    grade: overall[1],
+    score: scores[0] || null,                       // 0-1000, higher is safer
+    saferThan: pct ? Number(pct[1]) : null,         // % of Americans' neighborhoods this zip is safer than
+    violent: both ? both[1] : split ? split[1] : "",
+    property: both ? both[1] : split ? split[2] : "",
+    url: crimeGradeUrl_(zip),
+    checked: new Date().toISOString(),
+  };
 }
 
 /* ---------- Comments ---------- */
@@ -432,22 +502,23 @@ function toRow_(home) {
  * Our list as CSV, ranked homes first (1, 2, 3...), then the rest by price.
  * Excel's Data → From Web reads this URL and can refresh it automatically.
  */
-function csv_(homes, includeRemoved, comments) {
+function csv_(homes, includeRemoved, comments, safety) {
+  const zipSafety = (h) => (safety || {})[h.zip] || {};
   const notesFor = (id) => (comments || []).filter((c) => c.homeId === id).map((c) => c.name + ": " + c.text).join(" | ");
   const list = homes
     .filter((h) => includeRemoved || !h.removed)
     .sort((a, b) => (a.rank || 999) - (b.rank || 999) || (a.price || 0) - (b.price || 0));
   const head = ["Rank", "Address", "Town", "Zip", "Price", "Beds", "Baths", "Sq Ft", "Year Built",
     "Safety", "Status", "Why we like it", "Keep in mind", "Deadline", "HOA $/mo",
-    "Elementary", "Middle", "High", "Redfin", "On our list", "Why we removed it", "Family comments"];
+    "Elementary", "Middle", "High", "Safety score (of 1000)", "CrimeGrade", "Redfin", "On our list", "Why we removed it", "Family comments"];
   const cell = (v) => {
     const s = v == null ? "" : String(v);
     return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
   };
   const rows = list.map((h) => [
     h.rank || "", h.address, h.city, h.zip, h.price, h.beds, h.baths, h.sqft, h.yearBuilt,
-    h.safety, h.status, h.why, h.watch, h.deadline, h.hoa,
-    h.elementary, h.middle, h.high, h.redfinUrl, h.removed ? "Removed" : "Yes", h.removed ? h.removedReason : "", notesFor(h.id),
+    zipSafety(h).grade || h.safety, h.status, h.why, h.watch, h.deadline, h.hoa,
+    h.elementary, h.middle, h.high, zipSafety(h).score || "", crimeGradeUrl_(h.zip), h.redfinUrl, h.removed ? "Removed" : "Yes", h.removed ? h.removedReason : "", notesFor(h.id),
   ].map(cell).join(","));
   return ContentService.createTextOutput([head.join(",")].concat(rows).join("\n"))
     .setMimeType(ContentService.MimeType.CSV);

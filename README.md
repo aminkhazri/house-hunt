@@ -41,6 +41,10 @@ The Redfin phone app shares short links like `https://redf.in/rFnamM`, sometimes
 
 In the **Top 5** or the full **All our homes** list, press and hold a home (on its number, photo or address) and drag it up or down. While you drag near the top or bottom of the screen, the page scrolls for you. Or tap the ▲ ▼ buttons under a home's number to move it one spot. Either way the Sheet's `rank` column is renumbered 1, 2, 3…
 
+## Safety grades
+
+Each home's safety comes from **CrimeGrade's page for its zip code** (`https://crimegrade.org/safest-places-in-ZIP/`). The Apps Script reads that page, pulls out the overall grade, the safety score (0–1000, higher is safer), the "safer than X% of US neighborhoods" figure and the violent/property grades, and keeps them in Script Properties (`SAFETY_<zip>`) for a week before checking again. The page shows the grade, the score, how the area ranks against the other areas on our list, and a **CrimeGrade ↗** link. If CrimeGrade can't be reached, the page falls back to the grade in the Sheet's `safety` column.
+
 ## Comments
 
 Under each home there's a **💬 Add a comment** button. Comments go into a **Comments** tab in the Google Sheet (one row each: home id, name, comment, time) and show as small bubbles under the home. To delete one, delete its row in the Comments tab. The Excel feed has a "Family comments" column.
