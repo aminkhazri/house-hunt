@@ -2,7 +2,7 @@
 
 **Live page:** https://aminkhazri.github.io/house-hunt/
 
-One bright, simple page for our family of four to see the homes we picked, ranked with **#1 at the top**. It was built for readers who aren't comfortable with technology: large text, one table, and three buttons per home (**See photos** opens the Redfin listing, **Map** opens Google Maps, **Remove** takes it off our list). On phones and tablets each row becomes its own block with the same labels.
+One bright, simple page for our family of four, with a **Top 5 at a glance** strip at the top, to see the homes we picked, ranked with **#1 at the top**. It was built for readers who aren't comfortable with technology: large text, one table, and three buttons per home (**See photos** opens the Redfin listing, **Map** opens Google Maps, **Remove** takes it off our list). On phones and tablets each row becomes its own block with the same labels.
 
 ## Where the list lives
 
@@ -11,7 +11,7 @@ The page reads the **Homes** tab of our Google Sheet through the Apps Script web
 | You want to… | Do this |
 |---|---|
 | Remove a home | Tap **Remove** on the page (asks for the family passcode once per device). The Sheet's `removed` cell becomes `TRUE`. **Undo** or "Bring it back" reverses it. |
-| Change the order | Change the numbers in the `rank` column of the Sheet. |
+| Change the order | **Press and hold** a home on the page, then tap **Move up** / **Move down** (or change the `rank` numbers in the Sheet). Each move swaps two homes and renumbers the list 1, 2, 3… |
 | Add a home | Tap **＋ Add a home from Redfin**, paste the home's Redfin link, check the preview, and tap **Add to our list**. It goes to the bottom of the list. (Or add a row in the Sheet and give it a `rank`.) |
 | Change the notes | Edit `why`, `watch` or `deadline` in the Sheet. |
 

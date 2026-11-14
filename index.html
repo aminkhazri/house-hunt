@@ -97,8 +97,42 @@
     .btn.light { background: #fff; color: var(--sky); }
     .btn:hover { filter: brightness(1.08); }
 
+    .overview { margin: 6px 0 26px; }
+    .overview h2, .list-head h2 { margin: 0 0 12px; font-size: 1.4rem; font-weight: 900; }
+    .top5 { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; }
+    .top5 a {
+      display: grid; gap: 6px; height: 100%; text-decoration: none; color: var(--ink);
+      background: var(--paper); border: 2px solid var(--line); border-radius: 16px; padding: 10px; position: relative;
+      box-shadow: 0 4px 14px rgb(30 111 217 / .06);
+    }
+    .top5 li:first-child a { border-color: var(--sun); background: var(--sun-soft); border-width: 3px; }
+    .top5 img { width: 100%; height: 110px; object-fit: cover; border-radius: 10px; background: var(--line); }
+    .top5 .n { position: absolute; top: 4px; left: 4px; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; background: var(--sky); color: #fff; font-weight: 900; font-size: 1.15rem; border: 3px solid #fff; }
+    .top5 li:first-child .n { background: var(--sun); color: var(--ink); }
+    .top5 strong { font-size: 1rem; line-height: 1.25; }
+    .top5 .p { font-weight: 900; font-size: 1.1rem; }
+    .top5 .t { color: var(--muted); font-size: .9rem; }
+    .list-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .list-head h2 { margin: 0; }
+
+    tbody tr { -webkit-touch-callout: none; }
+    tbody tr.holding td { background: #e4efff !important; transition: background .5s; }
+    .move-home { display: grid; grid-template-columns: 56px 1fr; gap: 12px; align-items: center; background: var(--stripe); border-radius: 14px; padding: 12px; }
+    .move-home b { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; background: var(--sky); color: #fff; font-size: 1.5rem; font-weight: 900; }
+    .move-home strong { display: block; font-size: 1.15rem; }
+    .move-home span { color: var(--muted); }
+    .btn:disabled { opacity: .45; cursor: default; }
+    tr.moved td { animation: moved 1.2s ease-out; }
+    @keyframes moved { 0%, 30% { background: #e4efff; } }
+
+    @media (max-width: 1100px) {
+      .top5 { grid-template-columns: 1fr; gap: 10px; }
+      .top5 a { grid-template-columns: 110px 1fr; align-items: center; column-gap: 12px; }
+      .top5 img { grid-row: span 3; height: 82px; }
+    }
+
     .add-btn {
-      display: inline-block; margin: 0 0 18px; font: inherit; font-weight: 900; font-size: 1.15rem;
+      display: inline-block; margin: 0; font: inherit; font-weight: 900; font-size: 1.15rem;
       background: var(--leaf); color: #fff; border: 0; border-radius: 14px; padding: 14px 22px; cursor: pointer;
       box-shadow: 0 4px 14px rgb(31 138 76 / .3);
     }
@@ -187,8 +221,17 @@
   </header>
 
   <main class="wrap">
-    <p class="how"><b>How to use this page:</b> tap <b>See photos</b> to see inside a home on Redfin, or <b>Map</b> to see where it is. If we don't want a home anymore, tap <b>Remove</b>. You can always bring it back.</p>
-    <button type="button" class="add-btn" id="add-btn">＋ Add a home from Redfin</button>
+    <p class="how"><b>How to use this page:</b> tap <b>See photos</b> to see inside a home on Redfin, or <b>Map</b> to see where it is. If we don't want a home anymore, tap <b>Remove</b>. You can always bring it back. To change our order, <b>press and hold</b> on a home, then tap <b>Move up</b> or <b>Move down</b>.</p>
+
+    <section class="overview" aria-labelledby="top5-title">
+      <h2 id="top5-title">Our Top 5 at a glance</h2>
+      <ol class="top5" id="top5"></ol>
+    </section>
+
+    <div class="list-head">
+      <h2>All our homes</h2>
+      <button type="button" class="add-btn" id="add-btn">＋ Add a home from Redfin</button>
+    </div>
 
     <table>
       <caption class="sr-only">Our favorite homes, best first</caption>
@@ -222,6 +265,19 @@
       <div class="dialog-buttons">
         <button value="ok" class="btn danger">Yes, remove it</button>
         <button value="cancel" class="btn light">No, keep it</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="move" aria-labelledby="move-title">
+    <form method="dialog">
+      <h2 id="move-title">Change the order</h2>
+      <div class="move-home" id="move-home"></div>
+      <p class="error" id="move-error" role="alert"></p>
+      <div class="dialog-buttons">
+        <button type="button" class="btn" id="move-up">▲ Move up</button>
+        <button type="button" class="btn" id="move-down">▼ Move down</button>
+        <button value="done" class="btn light">Done</button>
       </div>
     </form>
   </dialog>
@@ -309,7 +365,7 @@
       const photo = safeUrl(h.photoUrl);
       const grade = String(h.safety || "?");
       return `
-      <tr class="${i === 0 ? "top" : ""}" data-id="${esc(h.id)}">
+      <tr class="${i === 0 ? "top" : ""}" data-id="${esc(h.id)}" id="home-${esc(h.id)}">
         <td class="rank"><b>${i + 1}</b>${i === 0 ? '<span class="badge">★ Top choice</span>' : ""}</td>
         <td class="photo">${photo ? `<img src="${esc(photo)}" alt="Front of ${esc(h.address)}" loading="${i < 3 ? "eager" : "lazy"}">` : ""}</td>
         <td class="home" data-label="Home"><strong>${esc(h.address)}</strong><span>${esc(h.city)}, NC</span></td>
@@ -329,8 +385,20 @@
       </tr>`;
     }
 
+    function top5Html(h, i) {
+      const photo = safeUrl(h.photoUrl);
+      return `<li><a href="#home-${esc(h.id)}" data-jump="${esc(h.id)}">
+        <span class="n">${i + 1}</span>
+        ${photo ? `<img src="${esc(photo)}" alt="Front of ${esc(h.address)}">` : "<span></span>"}
+        <strong>${esc(h.address)}</strong>
+        <span class="p">${h.price ? money(h.price) : ""}</span>
+        <span class="t">${esc(h.city)} · ${h.beds ?? "?"} bed · Safety ${esc(h.safety || "?")}</span>
+      </a></li>`;
+    }
+
     function render() {
       const list = ourList();
+      $("top5").innerHTML = list.slice(0, 5).map(top5Html).join("");
       $("rows").innerHTML = list.map(rowHtml).join("");
       $("empty").hidden = list.length > 0;
       const gone = removedList();
@@ -438,6 +506,84 @@
         showToast("Sorry, that didn't save. Please try again in a minute.");
       }
     }
+
+    /* ---------- Press and hold to change the order ---------- */
+    let moving = null; // id of the home in the Move box
+    let holdTimer = null, holdStart = null, holdRow = null;
+
+    function cancelHold() {
+      clearTimeout(holdTimer);
+      holdRow?.classList.remove("holding");
+      holdTimer = holdStart = holdRow = null;
+    }
+
+    $("rows").addEventListener("pointerdown", (e) => {
+      if (e.button > 0 || e.target.closest("a, button")) return; // buttons keep working normally
+      const row = e.target.closest("tr[data-id]");
+      if (!row) return;
+      holdStart = { x: e.clientX, y: e.clientY };
+      holdRow = row;
+      row.classList.add("holding");
+      holdTimer = setTimeout(() => {
+        const id = row.dataset.id;
+        cancelHold();
+        if (navigator.vibrate) navigator.vibrate(30);
+        openMove(id);
+      }, 600);
+    });
+    $("rows").addEventListener("pointermove", (e) => {
+      // Scrolling the page is not a press-and-hold.
+      if (holdStart && Math.hypot(e.clientX - holdStart.x, e.clientY - holdStart.y) > 12) cancelHold();
+    });
+    ["pointerup", "pointercancel", "pointerleave"].forEach((t) => $("rows").addEventListener(t, cancelHold));
+    $("rows").addEventListener("contextmenu", (e) => { if (e.target.closest("tr[data-id]") && !e.target.closest("a")) e.preventDefault(); });
+
+    function fillMove() {
+      const list = ourList();
+      const i = list.findIndex((h) => h.id === moving);
+      const h = list[i];
+      if (!h) { $("move").close(); return; }
+      $("move-home").innerHTML = `<b>${i + 1}</b><div><strong>${esc(h.address)}</strong><span>${esc(h.city)} · ${h.price ? money(h.price) : ""}</span></div>`;
+      $("move-up").disabled = i === 0;
+      $("move-down").disabled = i === list.length - 1;
+      $("move-up").textContent = i === 0 ? "▲ Already our top choice" : `▲ Move up to #${i}`;
+      $("move-down").textContent = i === list.length - 1 ? "▼ Already at the bottom" : `▼ Move down to #${i + 2}`;
+    }
+
+    function openMove(id) {
+      moving = id;
+      $("move-error").textContent = "";
+      fillMove();
+      $("move").showModal();
+    }
+
+    async function move(direction) {
+      const list = ourList();
+      const i = list.findIndex((h) => h.id === moving);
+      const j = direction === "up" ? i - 1 : i + 1;
+      if (i < 0 || j < 0 || j >= list.length) return;
+      $("move-error").textContent = "";
+      $("move-up").disabled = $("move-down").disabled = true;
+      // Show the new order right away; the Sheet catches up a moment later.
+      const before = list.map((h) => [h, h.rank]);
+      [list[i], list[j]] = [list[j], list[i]];
+      list.forEach((h, n) => { h.rank = n + 1; });
+      render();
+      fillMove();
+      document.getElementById("home-" + moving)?.classList.add("moved");
+      try {
+        const ok = await save("move", moving, { direction });
+        if (!ok) throw new Error("cancelled");
+      } catch (err) {
+        before.forEach(([h, rank]) => { h.rank = rank; }); // put it back the way it was
+        render();
+        $("move-error").textContent = err.message === "cancelled" ? "" : (err.message || "That didn't save. Please try again.");
+      }
+      fillMove();
+    }
+
+    $("move-up").addEventListener("click", () => move("up"));
+    $("move-down").addEventListener("click", () => move("down"));
 
     /* ---------- Add from a Redfin link ---------- */
     let found = null; // the home Redfin told us about, waiting for "Add to our list"

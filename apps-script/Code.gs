@@ -9,6 +9,7 @@
  *   POST { action: "add",     home, passcode }    -> { ok, home }
  *   POST { action: "addRedfin", url, why, addedBy, passcode } -> { ok, home }
  *   POST { action: "remove",  id,   passcode }    -> { ok }
+ *   POST { action: "move", id, direction: "up"|"down", passcode } -> { ok, order: [ids] }
  *   POST { action: "restore", id,   passcode }    -> { ok }
  *
  * Reading is open to anyone with the URL; writing needs the passcode stored
@@ -103,6 +104,7 @@ function doPost(e) {
     switch (body.action) {
       case "add": return json_({ ok: true, home: addHome_(body.home) });
       case "addRedfin": return json_({ ok: true, home: addFromRedfin_(body) });
+      case "move": return json_({ ok: true, order: moveHome_(body.id, body.direction) });
       case "remove": setRemoved_(body.id, true); return json_({ ok: true });
       case "restore": setRemoved_(body.id, false); return json_({ ok: true });
       default: return json_({ ok: false, error: "Unknown action." });
@@ -187,6 +189,37 @@ function setRemoved_(id, removed) {
   const row = index + 2;
   sheet.getRange(row, col_(sheet, "removed")).setValue(removed);
   sheet.getRange(row, col_(sheet, "removedAt")).setValue(removed ? new Date().toISOString() : "");
+}
+
+/* ---------- Reorder ---------- */
+
+/**
+ * Move a home one spot up or down our ranked list, then renumber the list
+ * 1, 2, 3... so gaps left by removed homes disappear. Returns the new order (ids).
+ */
+function moveHome_(id, direction) {
+  const sheet = sheet_();
+  const values = sheet.getDataRange().getValues();
+  const header = values[0];
+  const cId = header.indexOf("id"), cRank = header.indexOf("rank"), cRemoved = header.indexOf("removed");
+  const isRemoved = (v) => v === true || String(v).toUpperCase() === "TRUE";
+
+  const ranked = [];
+  for (let r = 1; r < values.length; r++) {
+    const rank = Number(values[r][cRank]);
+    if (rank > 0 && !isRemoved(values[r][cRemoved])) ranked.push({ row: r, id: String(values[r][cId]), rank: rank });
+  }
+  ranked.sort((a, b) => a.rank - b.rank);
+
+  const i = ranked.findIndex((h) => h.id === String(id));
+  if (i < 0) throw new Error("Couldn't find that home on our list. Refresh the page and try again.");
+  const j = direction === "up" ? i - 1 : i + 1;
+  if (j < 0) throw new Error("It's already our top choice.");
+  if (j >= ranked.length) throw new Error("It's already at the bottom of the list.");
+  [ranked[i], ranked[j]] = [ranked[j], ranked[i]];
+
+  ranked.forEach((h, n) => sheet.getRange(h.row + 1, cRank + 1).setValue(n + 1));
+  return ranked.map((h) => h.id);
 }
 
 /* ---------- Add from a Redfin link ---------- */
