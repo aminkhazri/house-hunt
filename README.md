@@ -41,6 +41,14 @@ The Redfin phone app shares short links like `https://redf.in/rFnamM`, sometimes
 
 In the **Top 5** or the full **All our homes** list, press and hold a home (on its number, photo or address) and drag it up or down. While you drag near the top or bottom of the screen, the page scrolls for you. Or tap the ▲ ▼ buttons under a home's number to move it one spot. Either way the Sheet's `rank` column is renumbered 1, 2, 3…
 
+## Speed
+
+The slow part of loading is Google's Apps Script (1.5–3 seconds per request). Three things keep the page fast:
+
+1. **Saved copy on each device** (stale-while-revalidate): the page stores the last list in `localStorage`, shows it instantly, then asks the Sheet for the latest and redraws only if something changed. It waits if someone is mid-drag or has a box open.
+2. **Saved copy in the script**: `listJson_()` keeps the finished answer in `CacheService` for 5 minutes. Every change made through the page clears it (`clearListCache_()`), and so does editing the Sheet by hand (the `onEdit` trigger).
+3. **Smaller answer**: only homes that are or were on our ranked list are sent, along with their comments.
+
 ## Safety grades
 
 Each home's safety comes from **CrimeGrade's page for its zip code** (`https://crimegrade.org/safest-places-in-ZIP/`). The Apps Script reads that page, pulls out the overall grade, the safety score (0–1000, higher is safer), the "safer than X% of US neighborhoods" figure and the violent/property grades, and keeps them in Script Properties (`SAFETY_<zip>`) for a week before checking again. The page shows the grade, the score, how the area ranks against the other areas on our list, and a **CrimeGrade ↗** link. If CrimeGrade can't be reached, the page falls back to the grade in the Sheet's `safety` column.

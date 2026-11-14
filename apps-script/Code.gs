@@ -90,9 +90,7 @@ function doGet(e) {
     if (action === "csv") { const hs = readHomes_(); return csv_(hs, p.include === "removed", readComments_(), safetyFor_(hs.filter((h) => h.rank).map((h) => h.zip))); }
     if (action === "lookup") return json_({ ok: true, home: redfinLookup_(p.url) });
     if (action !== "list") return json_({ ok: false, error: "Unknown action." });
-    const homes = readHomes_();
-    const zips = homes.filter((h) => h.rank).map((h) => h.zip);
-    return json_({ ok: true, homes: homes, comments: readComments_(), safety: safetyFor_(zips) });
+    return ContentService.createTextOutput(listJson_()).setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
     return json_({ ok: false, error: String(err.message || err) });
   }
@@ -111,6 +109,7 @@ function doPost(e) {
     }
 
     lock.waitLock(10000); // one write at a time, so two reviewers can't collide
+    clearListCache_();    // something is about to change, so the saved copy of the list is out of date
     switch (body.action) {
       case "add": return json_({ ok: true, home: addHome_(body.home) });
       case "addRedfin": return json_({ ok: true, home: addFromRedfin_(body) });
@@ -126,6 +125,41 @@ function doPost(e) {
   } finally {
     lock.releaseLock();
   }
+}
+
+/* ---------- Fast list: a saved copy of the answer ---------- */
+
+const LIST_CACHE_KEY = "LIST_JSON";
+const LIST_CACHE_SECONDS = 300; // 5 minutes; any change made through the page clears it right away
+
+/**
+ * The family page's list as JSON text. Reading the Sheet, the comments and the safety
+ * grades takes a while, so we keep the finished answer in CacheService and reuse it
+ * until something changes. Only homes that are (or were) on our ranked list are sent.
+ */
+function listJson_() {
+  const cache = CacheService.getScriptCache();
+  const hit = cache.get(LIST_CACHE_KEY);
+  if (hit) return hit;
+  const homes = readHomes_().filter((h) => h.rank);
+  const ids = homes.map((h) => h.id);
+  const json = JSON.stringify({
+    ok: true,
+    homes: homes,
+    comments: readComments_().filter((c) => ids.indexOf(c.homeId) >= 0),
+    safety: safetyFor_(homes.map((h) => h.zip)),
+  });
+  if (json.length < 90000) cache.put(LIST_CACHE_KEY, json, LIST_CACHE_SECONDS); // cache values max out at 100 KB
+  return json;
+}
+
+function clearListCache_() {
+  CacheService.getScriptCache().remove(LIST_CACHE_KEY);
+}
+
+/** Runs by itself whenever someone edits the Google Sheet by hand, so the page shows the edit right away. */
+function onEdit() {
+  clearListCache_();
 }
 
 /* ---------- Sheet helpers ---------- */

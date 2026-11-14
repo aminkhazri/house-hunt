@@ -6,6 +6,9 @@
   <title>Rachel, Amin &amp; Aurora's Home Hunt</title>
   <meta name="description" content="Our family's favorite homes in North Carolina, with our top choice first.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 48 48%27%3E%3Cpath d=%27M6 22 24 7l18 15M11 20v20h26V20%27 fill=%27none%27 stroke=%27%2312355f%27 stroke-width=%274%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E">
+  <!-- Open the connections to Google's script servers early: the list comes from there. -->
+  <link rel="preconnect" href="https://script.google.com" crossorigin>
+  <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Nunito:wght@400;600;800;900&display=swap" rel="stylesheet">
@@ -686,19 +689,47 @@
       }).join("");
     }
 
+    /*
+     * Fast loading: the page keeps the last list it got on this device and shows it
+     * straight away, then asks the Sheet for the latest and redraws only if something
+     * changed. (This is called "stale-while-revalidate".)
+     */
+    const LIST_KEY = "homehunt.list.v1";
+    let shownJson = "";
+
+    function useList(json) {
+      const data = JSON.parse(json);
+      homes = data.homes;
+      comments = data.comments || [];
+      safetyByZip = data.safety || {};
+      shownJson = json;
+      render();
+    }
+
+    // Don't redraw under someone's finger: wait until they finish dragging or close a box.
+    const busy = () => drag || rowDrag || press || rowPress || document.querySelector("dialog[open]");
+
     async function load() {
+      const saved = store.get(LIST_KEY);
+      if (saved && !shownJson) {
+        try { useList(saved); $("status-note").textContent = "Checking for changes…"; } catch { /* ignore a broken saved copy */ }
+      }
       try {
         const res = await fetch(API + "?action=list", { cache: "no-store" });
-        const data = await res.json();
+        const json = await res.text();
+        const data = JSON.parse(json);
         if (!data.ok) throw new Error(data.error);
-        homes = data.homes;
-        comments = data.comments || [];
-        safetyByZip = data.safety || {};
+        store.set(LIST_KEY, json);
+        if (json !== shownJson) {
+          while (busy()) await new Promise((r) => setTimeout(r, 300));
+          useList(json);
+        }
         const when = new Date().toLocaleString("en-US", { month: "long", day: "numeric", hour: "numeric", minute: "2-digit" });
         $("status-note").textContent = `Updated ${when}`;
-        render();
       } catch (err) {
-        $("status-note").textContent = "We couldn't load the list. Please refresh the page in a minute.";
+        $("status-note").textContent = shownJson
+          ? "Showing the last list we saw. Refresh in a minute for the newest."
+          : "We couldn't load the list. Please refresh the page in a minute.";
       }
     }
 
