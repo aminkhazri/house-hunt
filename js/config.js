@@ -7,7 +7,7 @@
  *   saves changes only in the current browser.
  */
 export const CONFIG = {
-  scriptUrl: "",
+  scriptUrl: "https://script.google.com/macros/s/AKfycbxXkpTDH4GwIN1_SjLc3I_mfUkoZy30IMO069d4lkhVtEiCmKLiGbdsNgJvVpDmaQtw/exec",
   seedUrl: "data/homes.json",
   state: "NC",
 };
