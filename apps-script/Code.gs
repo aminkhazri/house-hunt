@@ -7,7 +7,7 @@
  *   GET  ?action=csv&include=removed        -> same, plus removed homes
  *   GET  ?action=lookup&url=REDFIN_URL      -> { ok, home } preview from a Redfin link (web or app short link)
  *   POST { action: "add",     home, passcode }    -> { ok, home }
- *   POST { action: "addRedfin", url, why, addedBy, passcode } -> { ok, home }
+ *   POST { action: "addRedfin", url, why, addedBy }  -> { ok, home }   (no passcode needed)
  *   POST { action: "remove",  id, reason, passcode } -> { ok }   (reason is saved in removedReason)
  *   POST { action: "move", id, direction: "up"|"down", passcode } -> { ok, order: [ids] }
  *   POST { action: "moveTo", id, position: 1..n, passcode }       -> { ok, order: [ids] }
@@ -101,7 +101,10 @@ function doPost(e) {
   try {
     const body = JSON.parse((e && e.postData && e.postData.contents) || "{}");
     const expected = PropertiesService.getScriptProperties().getProperty("PASSCODE");
-    if (!expected || String(body.passcode || "") !== expected) {
+    // Adding a home from Redfin is open to anyone with the page (it can always be removed);
+    // every other change needs the family passcode.
+    const open = body.action === "addRedfin";
+    if (!open && (!expected || String(body.passcode || "") !== expected)) {
       return json_({ ok: false, error: "bad_passcode" });
     }
 
@@ -358,7 +361,7 @@ function addFromRedfin_(body) {
   const existing = homes.find((h) => h.id === id || h.redfinUrl === info.redfinUrl || sameStreet(h));
   const nextRank = homes.reduce((max, h) => (h.rank && !h.removed ? Math.max(max, h.rank) : max), 0) + 1;
   const text = (v, max) => String(v == null ? "" : v).trim().slice(0, max);
-  const why = text(body.why, 500) || "Added by " + (text(body.addedBy, 60) || "the family") + ". Tap See photos to learn more.";
+  const why = text(body.why, 500) || "Added by " + (text(body.addedBy, 60) || "the family") + ".";
 
   if (existing && existing.rank && !existing.removed) throw new Error(existing.address + " is already on our list (#" + existing.rank + ").");
 

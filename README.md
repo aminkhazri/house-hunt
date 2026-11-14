@@ -2,7 +2,7 @@
 
 **Live page:** https://aminkhazri.github.io/house-hunt/
 
-One bright, simple page for our family of four, with a **Top 5 Homes** strip at the top, to see the homes we picked, ranked with **#1 at the top**. It was built for readers who aren't comfortable with technology: large text, one table, and three buttons per home (**See photos** opens the Redfin listing, **Map** opens Google Maps, **Remove** takes it off our list). On phones and tablets each row becomes its own block with the same labels.
+One bright, simple page for our family of four, with a **Top 5 Homes** strip at the top, to see the homes we picked, ranked with **#1 at the top**. It was built for readers who aren't comfortable with technology: large text, one table, and three buttons per home (**Open in Redfin** opens the Redfin listing, **Map** opens Google Maps, **Remove** takes it off our list). On phones and tablets each row becomes its own block with the same labels.
 
 ## Where the list lives
 
@@ -47,7 +47,7 @@ Under each home there's a **💬 Add a comment** button. Comments go into a **Co
 
 ## The family passcode
 
-Every change goes through the Apps Script, which checks the passcode on the server. **Remove** and **Add** ask for it every time. **Add a comment** asks too, unless you typed it in the last 5 minutes. Dragging in the Top 5, **Undo** and **Bring it back** reuse a passcode typed in the last 5 minutes, so they don't nag right after you typed it. Nothing is saved on the device: close the page and it's forgotten.
+Every change goes through the Apps Script, which checks the passcode on the server. **Remove** asks for it every time. **Adding a home doesn't need it**: anyone with the page can add one (it can always be removed). **Add a comment** asks for the passcode, unless you typed it in the last 5 minutes. Dragging in the Top 5, **Undo** and **Bring it back** reuse a passcode typed in the last 5 minutes, so they don't nag right after you typed it. Nothing is saved on the device: close the page and it's forgotten.
 
 ## How the top 10 were picked
 
