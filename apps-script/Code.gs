@@ -5,7 +5,9 @@
  *   GET  ?action=list                       -> { ok, homes: [...] }
  *   GET  ?action=csv                        -> our current list as CSV (for Excel)
  *   GET  ?action=csv&include=removed        -> same, plus removed homes
+ *   GET  ?action=lookup&url=REDFIN_URL      -> { ok, home } preview from a Redfin link
  *   POST { action: "add",     home, passcode }    -> { ok, home }
+ *   POST { action: "addRedfin", url, why, addedBy, passcode } -> { ok, home }
  *   POST { action: "remove",  id,   passcode }    -> { ok }
  *   POST { action: "restore", id,   passcode }    -> { ok }
  *
@@ -80,6 +82,7 @@ function doGet(e) {
     const p = (e && e.parameter) || {};
     const action = p.action || "list";
     if (action === "csv") return csv_(readHomes_(), p.include === "removed");
+    if (action === "lookup") return json_({ ok: true, home: redfinLookup_(p.url) });
     if (action !== "list") return json_({ ok: false, error: "Unknown action." });
     return json_({ ok: true, homes: readHomes_() });
   } catch (err) {
@@ -99,6 +102,7 @@ function doPost(e) {
     lock.waitLock(10000); // one write at a time, so two reviewers can't collide
     switch (body.action) {
       case "add": return json_({ ok: true, home: addHome_(body.home) });
+      case "addRedfin": return json_({ ok: true, home: addFromRedfin_(body) });
       case "remove": setRemoved_(body.id, true); return json_({ ok: true });
       case "restore": setRemoved_(body.id, false); return json_({ ok: true });
       default: return json_({ ok: false, error: "Unknown action." });
@@ -185,6 +189,104 @@ function setRemoved_(id, removed) {
   sheet.getRange(row, col_(sheet, "removedAt")).setValue(removed ? new Date().toISOString() : "");
 }
 
+/* ---------- Add from a Redfin link ---------- */
+
+const REDFIN_URL = /^https:\/\/(www\.)?redfin\.com\/[A-Z]{2}\/[^?#\s]+\/home\/\d+/;
+
+/**
+ * Read a Redfin listing page and pull out the basics. Redfin's page summary
+ * (meta description) looks like:
+ *   "For Sale: 5 beds, 3.5 baths · 2339 sq. ft. · 479 Curling Crk Dr, Clayton, NC 27527 · $385,000 · MLS# 10193225 · ..."
+ */
+function redfinLookup_(rawUrl) {
+  const match = String(rawUrl || "").trim().match(REDFIN_URL);
+  if (!match) throw new Error("That doesn't look like a Redfin home link. Open the home on Redfin and copy the address from the top of the browser.");
+  const url = match[0];
+
+  const res = UrlFetchApp.fetch(url, {
+    muteHttpExceptions: true,
+    headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36" },
+  });
+  if (res.getResponseCode() !== 200) throw new Error("Redfin didn't answer. Please try again in a minute.");
+  const html = res.getContentText();
+  const meta = (name) => {
+    const m = html.match(new RegExp('<meta[^>]+(?:name|property)="' + name + '"[^>]+content="([^"]*)"'));
+    return m ? decode_(m[1]) : "";
+  };
+  const desc = meta("description");
+  const num = (re) => { const m = desc.match(re); return m ? Number(m[1].replace(/,/g, "")) : null; };
+
+  // Address: from the summary if possible, otherwise from the link itself.
+  const addr = desc.match(/([^·∙:]+?),\s*([^,·∙]+),\s*([A-Z]{2})\s+(\d{5})/);
+  const path = url.split("/"); // ["https:", "", "www.redfin.com", "NC", "Clayton", "479-Curling-Creek-Dr-27527", "home", "187212408"]
+  const slugParts = path[5].split("-");
+  const zip = addr ? addr[4] : slugParts.pop();
+  const street = addr ? addr[1].trim() : slugParts.join(" ");
+  const city = addr ? addr[2].trim() : path[4].replace(/-/g, " ");
+  const year = html.match(/\\?"yearBuilt\\?"\s*:\s*(\d{4})/);
+  const status = (desc.match(/^([^:]+):/) || [])[1] || "";
+
+  return {
+    address: street, city: city, zip: zip,
+    price: num(/\$([\d,]+)/),
+    beds: num(/([\d.]+)\s*beds?/i),
+    baths: num(/([\d.]+)\s*baths?/i),
+    sqft: num(/([\d,]+)\s*sq\.?\s*ft/i),
+    yearBuilt: year ? Number(year[1]) : null,
+    mls: (desc.match(/MLS#\s*([\w-]+)/) || [])[1] || "",
+    status: /sale/i.test(status) ? "Active" : status,
+    redfinUrl: url,
+    photoUrl: /^https:\/\//.test(meta("og:image")) ? meta("og:image") : "",
+  };
+}
+
+/** Add (or bring back) a home from its Redfin link, at the bottom of our ranked list. */
+function addFromRedfin_(body) {
+  const info = redfinLookup_(body.url);
+  const sheet = sheet_();
+  const homes = readHomes_();
+  const id = (info.address + "-" + info.zip).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const sameStreet = (h) => h.zip === info.zip && h.address.toLowerCase().replace(/\W/g, "").slice(0, 6) === info.address.toLowerCase().replace(/\W/g, "").slice(0, 6);
+  const existing = homes.find((h) => h.id === id || h.redfinUrl === info.redfinUrl || sameStreet(h));
+  const nextRank = homes.reduce((max, h) => (h.rank && !h.removed ? Math.max(max, h.rank) : max), 0) + 1;
+  const text = (v, max) => String(v == null ? "" : v).trim().slice(0, max);
+  const why = text(body.why, 500) || "Added by " + (text(body.addedBy, 60) || "the family") + ". Tap See photos to learn more.";
+
+  if (existing && existing.rank && !existing.removed) throw new Error(existing.address + " is already on our list (#" + existing.rank + ").");
+
+  // Safety grades are by area, so borrow the grade most homes in the same zip have.
+  const grades = homes.filter((h) => h.zip === info.zip && h.safety).map((h) => h.safety);
+  const safety = grades.sort((a, b) => grades.filter((g) => g === b).length - grades.filter((g) => g === a).length)[0] || "";
+
+  if (existing) {
+    // Already in the sheet (maybe removed or unranked): refresh it and put it back on the list.
+    const values = sheet.getDataRange().getValues();
+    const header = values[0];
+    const r = values.findIndex((row, i) => i > 0 && String(row[0]) === existing.id);
+    const set = (key, v) => { const c = header.indexOf(key); if (c >= 0 && v !== null && v !== "") sheet.getRange(r + 1, c + 1).setValue(v); };
+    set("price", info.price); set("photoUrl", info.photoUrl); set("redfinUrl", info.redfinUrl);
+    set("status", info.status); set("rank", nextRank); set("why", why);
+    sheet.getRange(r + 1, header.indexOf("removed") + 1).setValue(false);
+    return Object.assign({}, existing, info, { rank: nextRank, why: why, removed: false });
+  }
+
+  const home = Object.assign(cleanHome_(Object.assign({}, info, {
+    addedBy: text(body.addedBy, 60), list: "Added " + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "MMM d"),
+  })), { safety: safety, rank: nextRank, why: why, watch: "", deadline: "" });
+  sheet.appendRow(headerRow_(sheet, home));
+  return home;
+}
+
+/** Build a row in the sheet's actual column order (safer than assuming COLUMNS order). */
+function headerRow_(sheet, home) {
+  const header = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  return header.map((key) => (home[key] == null ? "" : home[key]));
+}
+
+function decode_(s) {
+  return s.replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+}
+
 /** Never trust the browser: trim text, coerce numbers, allow only http(s) links. */
 function cleanHome_(input) {
   const h = input || {};
@@ -201,11 +303,11 @@ function cleanHome_(input) {
     id: (address + "-" + zip).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
     address: address, city: text(h.city, 60), zip: zip, county: text(h.county, 60),
     neighborhood: text(h.neighborhood, 80), price: num(h.price), originalPrice: "",
-    status: "Active", mls: text(h.mls, 40), daysOnMarket: "", mortgage: num(h.mortgage),
+    mls: text(h.mls, 40), daysOnMarket: "", mortgage: num(h.mortgage),
     safety: text(h.safety, 3), yearBuilt: num(h.yearBuilt), sqft: num(h.sqft),
     beds: num(h.beds), baths: num(h.baths), hoa: num(h.hoa), notes: text(h.notes, 1000),
     elementary: "", elementaryScore: null, middle: "", middleScore: null, high: "", highScore: null,
-    list: text(h.list, 40), redfinUrl: url(h.redfinUrl), photoUrl: url(h.photoUrl),
+    list: text(h.list, 40), redfinUrl: url(h.redfinUrl), photoUrl: url(h.photoUrl), status: text(h.status, 20) || "Active",
     addedBy: text(h.addedBy, 60) || "A reviewer", addedAt: new Date().toISOString(),
     removed: false, removedAt: "",
   };

@@ -97,6 +97,23 @@
     .btn.light { background: #fff; color: var(--sky); }
     .btn:hover { filter: brightness(1.08); }
 
+    .add-btn {
+      display: inline-block; margin: 0 0 18px; font: inherit; font-weight: 900; font-size: 1.15rem;
+      background: var(--leaf); color: #fff; border: 0; border-radius: 14px; padding: 14px 22px; cursor: pointer;
+      box-shadow: 0 4px 14px rgb(31 138 76 / .3);
+    }
+    .add-btn:hover { filter: brightness(1.08); }
+    #add-step1, #add-step2 { display: grid; gap: 8px; }
+    dialog label { font-weight: 800; }
+    dialog small { font-weight: 400; color: var(--muted); }
+    dialog textarea { font: inherit; padding: 12px 14px; border: 2px solid var(--line); border-radius: 12px; resize: vertical; }
+    .preview { display: grid; grid-template-columns: 120px 1fr; gap: 12px; align-items: center; background: var(--stripe); border-radius: 14px; padding: 10px; }
+    .preview img { width: 120px; height: 90px; border-radius: 10px; object-fit: cover; }
+    .preview strong { display: block; font-size: 1.1rem; }
+    .preview span { color: var(--muted); font-size: .95rem; }
+    tr.new td { animation: glow 2.5s ease-out; }
+    @keyframes glow { 0%, 40% { background: #d9f7e5; } }
+    @media (prefers-reduced-motion: reduce) { tr.new td { animation: none; } }
     .hello { margin: 0 0 2px; font-size: 1.1rem; font-weight: 800; opacity: .9; }
     .btn.remove { background: #fff; color: #b42318; border-color: #f3b8b2; font-size: .95rem; padding: 8px 10px; cursor: pointer; font-family: inherit; width: 100%; }
     .btn.danger { background: #b42318; border-color: #b42318; color: #fff; }
@@ -171,6 +188,7 @@
 
   <main class="wrap">
     <p class="how"><b>How to use this page:</b> tap <b>See photos</b> to see inside a home on Redfin, or <b>Map</b> to see where it is. If we don't want a home anymore, tap <b>Remove</b>. You can always bring it back.</p>
+    <button type="button" class="add-btn" id="add-btn">＋ Add a home from Redfin</button>
 
     <table>
       <caption class="sr-only">Our favorite homes, best first</caption>
@@ -204,6 +222,29 @@
       <div class="dialog-buttons">
         <button value="ok" class="btn danger">Yes, remove it</button>
         <button value="cancel" class="btn light">No, keep it</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="add" aria-labelledby="add-title">
+    <form id="add-form">
+      <h2 id="add-title">Add a home</h2>
+      <div id="add-step1">
+        <p>Open the home on Redfin, copy the web address from the top of the page, and paste it here.</p>
+        <label for="add-url" class="sr-only">Redfin link</label>
+        <input id="add-url" type="url" inputmode="url" placeholder="https://www.redfin.com/NC/…" autocomplete="off">
+      </div>
+      <div id="add-step2" hidden>
+        <div class="preview" id="add-preview"></div>
+        <label for="add-why">Why do you like it? <small>(optional)</small></label>
+        <textarea id="add-why" rows="3" placeholder="Big back yard, close to the grandkids…"></textarea>
+        <label for="add-name">Your name</label>
+        <input id="add-name" type="text" autocomplete="given-name" placeholder="Rachel">
+      </div>
+      <p class="error" id="add-error" role="alert"></p>
+      <div class="dialog-buttons">
+        <button type="submit" class="btn" id="add-go">Look it up</button>
+        <button type="button" class="btn light" id="add-cancel">Cancel</button>
       </div>
     </form>
   </dialog>
@@ -329,17 +370,18 @@
       });
     }
 
-    /** Send a change to the Sheet. Asks for the passcode the first time, and again if it was wrong. */
-    async function save(action, id) {
+    /** Send a change to the Sheet. Asks for the passcode the first time, and again if it was wrong.
+     *  Returns the server's answer, or false if the person cancelled. */
+    async function save(action, id, extra = {}) {
       let passcode = store.get(PASS_KEY) || await askPasscode();
       while (passcode) {
         const res = await fetch(API, {
           method: "POST",
           headers: { "Content-Type": "text/plain;charset=utf-8" }, // keeps it a simple request (no CORS preflight)
-          body: JSON.stringify({ action, id, passcode }),
+          body: JSON.stringify({ action, id, passcode, ...extra }),
         });
         const data = await res.json();
-        if (data.ok) { store.set(PASS_KEY, passcode); return true; }
+        if (data.ok) { store.set(PASS_KEY, passcode); return data; }
         if (data.error !== "bad_passcode") throw new Error(data.error || "Something went wrong.");
         store.del(PASS_KEY);
         passcode = await askPasscode("That passcode didn't work. Please try again.");
@@ -396,6 +438,71 @@
         showToast("Sorry, that didn't save. Please try again in a minute.");
       }
     }
+
+    /* ---------- Add from a Redfin link ---------- */
+    let found = null; // the home Redfin told us about, waiting for "Add to our list"
+
+    function openAdd() {
+      found = null;
+      $("add-form").reset();
+      $("add-step1").hidden = false;
+      $("add-step2").hidden = true;
+      $("add-error").textContent = "";
+      $("add-go").textContent = "Look it up";
+      $("add-go").disabled = false;
+      $("add-name").value = store.get("homehunt.name");
+      $("add").showModal();
+      $("add-url").focus();
+    }
+
+    $("add-btn").addEventListener("click", openAdd);
+    $("add-cancel").addEventListener("click", () => $("add").close());
+
+    $("add-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const go = $("add-go");
+      $("add-error").textContent = "";
+      go.disabled = true;
+      try {
+        if (!found) {
+          // Step 1: ask Google to read the Redfin page for us.
+          const url = $("add-url").value.trim();
+          if (!/redfin\.com\/.+\/home\/\d+/i.test(url)) throw new Error("Please paste a Redfin home link. It looks like https://www.redfin.com/NC/…/home/12345");
+          go.textContent = "Looking it up…";
+          const res = await fetch(API + "?action=lookup&url=" + encodeURIComponent(url));
+          const data = await res.json();
+          if (!data.ok) throw new Error(data.error);
+          found = data.home;
+          const photo = safeUrl(found.photoUrl);
+          $("add-preview").innerHTML = `
+            ${photo ? `<img src="${esc(photo)}" alt="Front of ${esc(found.address)}">` : "<span></span>"}
+            <div><strong>${esc(found.address)}</strong><span>${esc(found.city)}, NC · ${found.price ? money(found.price) : ""}<br>
+            ${found.beds ?? "?"} bed · ${found.baths ?? "?"} bath${found.sqft ? " · " + Number(found.sqft).toLocaleString("en-US") + " sq ft" : ""}</span></div>`;
+          $("add-step1").hidden = true;
+          $("add-step2").hidden = false;
+          go.textContent = "Add to our list";
+          $("add-why").focus();
+        } else {
+          // Step 2: save it to the Sheet (asks for the passcode the first time).
+          go.textContent = "Adding…";
+          const name = $("add-name").value.trim();
+          if (name) store.set("homehunt.name", name);
+          const ok = await save("addRedfin", null, { url: found.redfinUrl, why: $("add-why").value.trim(), addedBy: name });
+          if (!ok) { go.textContent = "Add to our list"; return; }
+          $("add").close();
+          await load();
+          const row = document.querySelector(`tr[data-id="${CSS.escape(ok.home.id)}"]`) ||
+            [...document.querySelectorAll("tbody tr")].find((tr) => tr.textContent.includes(found.address));
+          if (row) { row.classList.add("new"); row.scrollIntoView({ behavior: "smooth", block: "center" }); }
+          showToast(`${found.address} was added to our list.`);
+        }
+      } catch (err) {
+        $("add-error").textContent = err.message || "Something went wrong. Please try again.";
+        go.textContent = found ? "Add to our list" : "Look it up";
+      } finally {
+        go.disabled = false;
+      }
+    });
 
     document.addEventListener("click", (e) => {
       const rm = e.target.closest("[data-remove]");

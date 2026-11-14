@@ -12,10 +12,16 @@ The page reads the **Homes** tab of our Google Sheet through the Apps Script web
 |---|---|
 | Remove a home | Tap **Remove** on the page (asks for the family passcode once per device). The Sheet's `removed` cell becomes `TRUE`. **Undo** or "Bring it back" reverses it. |
 | Change the order | Change the numbers in the `rank` column of the Sheet. |
-| Add a home | Add a row in the Homes tab (or use `/explorer/`), give it a `rank`, and fill in `why` / `watch`. |
+| Add a home | Tap **＋ Add a home from Redfin**, paste the home's Redfin link, check the preview, and tap **Add to our list**. It goes to the bottom of the list. (Or add a row in the Sheet and give it a `rank`.) |
 | Change the notes | Edit `why`, `watch` or `deadline` in the Sheet. |
 
 Refresh the page to see changes.
+
+### How "Add from Redfin" works
+
+1. The page sends the link to the Apps Script web app (`?action=lookup&url=…`). The browser can't read Redfin itself, because of CORS, but Google's servers can.
+2. `redfinLookup_()` fetches the listing and reads Redfin's page summary (`<meta name="description">`, e.g. *"For Sale: 5 beds, 3.5 baths · 2339 sq. ft. · 479 Curling Crk Dr, Clayton, NC 27527 · $385,000 · MLS# …"*), the photo (`og:image`) and the year built (`"yearBuilt":2023`).
+3. The page shows a preview. **Add to our list** sends the link and the passcode to `addFromRedfin_()`, which reads Redfin again on the server (it never trusts what the browser says), gives the home the next rank, and borrows the safety grade most homes in the same zip have. If the home was removed before, it brings it back instead of making a copy.
 
 ## Excel on your computer (live link)
 
