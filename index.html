@@ -102,12 +102,6 @@
     .overview { margin: 6px 0 26px; }
     .overview h2, .list-head h2 { margin: 0 0 12px; font-size: 1.4rem; font-weight: 900; }
     .top5 { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; }
-    .top5 a {
-      display: grid; gap: 6px; height: 100%; text-decoration: none; color: var(--ink);
-      background: var(--paper); border: 2px solid var(--line); border-radius: 16px; padding: 10px; position: relative;
-      box-shadow: 0 4px 14px rgb(30 111 217 / .06);
-    }
-    .top5 li:first-child a { border-color: var(--sun); background: var(--sun-soft); border-width: 3px; }
     .top5 img { width: 100%; height: 110px; object-fit: cover; border-radius: 10px; background: var(--line); }
     .top5 .n { position: absolute; top: 4px; left: 4px; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; background: var(--sky); color: #fff; font-weight: 900; font-size: 1.15rem; border: 3px solid #fff; }
     .top5 li:first-child .n { background: var(--sun); color: var(--ink); }
@@ -117,19 +111,30 @@
     .list-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; }
     .list-head h2 { margin: 0; }
 
-    tbody tr { -webkit-touch-callout: none; }
-    tbody tr.holding td { background: #e4efff !important; transition: background .5s; }
-    .move-home { display: grid; grid-template-columns: 56px 1fr; gap: 12px; align-items: center; background: var(--stripe); border-radius: 14px; padding: 12px; }
-    .move-home b { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; background: var(--sky); color: #fff; font-size: 1.5rem; font-weight: 900; }
-    .move-home strong { display: block; font-size: 1.15rem; }
-    .move-home span { color: var(--muted); }
+    .top5 .tile {
+      display: grid; gap: 6px; height: 100%; color: var(--ink); cursor: grab;
+      background: var(--paper); border: 2px solid var(--line); border-radius: 16px; padding: 10px; position: relative;
+      box-shadow: 0 4px 14px rgb(30 111 217 / .06);
+      -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+      transition: transform .18s ease, box-shadow .18s ease;
+    }
+    .top5 .tile img { -webkit-user-drag: none; pointer-events: none; }
+    .top5 li:first-child .tile { border-color: var(--sun); background: var(--sun-soft); border-width: 3px; }
+    .top5 .tile.pressing { transform: scale(.97); }
+    .top5 .tile.dragging {
+      z-index: 5; cursor: grabbing; transition: none;
+      box-shadow: 0 18px 40px rgb(15 40 80 / .28); outline: 3px solid var(--sky);
+    }
+    .top5 .grip { position: absolute; top: 8px; right: 10px; color: var(--muted); font-size: 1.1rem; letter-spacing: -2px; }
+    .drag-tip { margin: -4px 0 12px; color: var(--muted); font-size: 1rem; }
+    .top5 li.flash .tile { animation: moved 1.2s ease-out; }
     .btn:disabled { opacity: .45; cursor: default; }
     tr.moved td { animation: moved 1.2s ease-out; }
     @keyframes moved { 0%, 30% { background: #e4efff; } }
 
     @media (max-width: 1100px) {
       .top5 { grid-template-columns: 1fr; gap: 10px; }
-      .top5 a { grid-template-columns: 110px 1fr; align-items: center; column-gap: 12px; }
+      .top5 .tile { grid-template-columns: 110px 1fr; align-items: center; column-gap: 12px; }
       .top5 img { grid-row: span 3; height: 82px; }
     }
 
@@ -222,10 +227,11 @@
   </header>
 
   <main class="wrap">
-    <p class="how">Tap <b>See photos</b> to look inside a home, or <b>Map</b> to see where it is. Want to change our order? <b>Press and hold</b> a home to move it up or down.</p>
+    <p class="how">Tap <b>See photos</b> to look inside a home, or <b>Map</b> to see where it is. Want to change our order? In the Top 5, <b>press and hold</b> a home, then <b>drag</b> it where you want it.</p>
 
     <section class="overview" aria-labelledby="top5-title">
       <h2 id="top5-title">Our Top 5 at a glance</h2>
+      <p class="drag-tip">Press and hold a home, then drag it up or down to change our order.</p>
       <ol class="top5" id="top5"></ol>
     </section>
 
@@ -266,19 +272,6 @@
       <div class="dialog-buttons">
         <button value="ok" class="btn danger">Yes, remove it</button>
         <button value="cancel" class="btn light">No, keep it</button>
-      </div>
-    </form>
-  </dialog>
-
-  <dialog id="move" aria-labelledby="move-title">
-    <form method="dialog">
-      <h2 id="move-title">Change the order</h2>
-      <div class="move-home" id="move-home"></div>
-      <p class="error" id="move-error" role="alert"></p>
-      <div class="dialog-buttons">
-        <button type="button" class="btn" id="move-up">▲ Move up</button>
-        <button type="button" class="btn" id="move-down">▼ Move down</button>
-        <button value="done" class="btn light">Done</button>
       </div>
     </form>
   </dialog>
@@ -389,13 +382,14 @@
 
     function top5Html(h, i) {
       const photo = safeUrl(h.photoUrl);
-      return `<li><a href="#home-${esc(h.id)}" data-jump="${esc(h.id)}">
-        <span class="n">${i + 1}</span>
+      return `<li data-id="${esc(h.id)}"><div class="tile" tabindex="0" role="button"
+          aria-label="#${i + 1} ${esc(h.address)}. Press and hold, then drag to change the order, or use the arrow keys.">
+        <span class="n">${i + 1}</span><span class="grip" aria-hidden="true">⋮⋮</span>
         ${photo ? `<img src="${esc(photo)}" alt="Front of ${esc(h.address)}">` : "<span></span>"}
         <strong>${esc(h.address)}</strong>
         <span class="p">${h.price ? money(h.price) : ""}</span>
         <span class="t">${esc(h.city)} · ${h.beds ?? "?"} bed · Safety ${esc(h.safety || "?")}</span>
-      </a></li>`;
+      </div></li>`;
     }
 
     function render() {
@@ -509,83 +503,128 @@
       }
     }
 
-    /* ---------- Press and hold to change the order ---------- */
-    let moving = null; // id of the home in the Move box
-    let holdTimer = null, holdStart = null, holdRow = null;
+    /* ---------- Top 5: press and hold, then drag to reorder ---------- */
+    const HOLD_MS = 450;   // how long to press before the card lifts
+    const SLOP = 10;       // finger can wiggle this many pixels before we treat it as scrolling
+    let press = null;      // { li, tile, x, y, timer }
+    let drag = null;       // { li, tile, grabX, grabY, from }
 
-    function cancelHold() {
-      clearTimeout(holdTimer);
-      holdRow?.classList.remove("holding");
-      holdTimer = holdStart = holdRow = null;
+    const top5 = $("top5");
+    const tiles = () => [...top5.children];
+
+    function cancelPress() {
+      if (!press) return;
+      clearTimeout(press.timer);
+      press.tile.classList.remove("pressing");
+      press = null;
     }
 
-    $("rows").addEventListener("pointerdown", (e) => {
-      if (e.button > 0 || e.target.closest("a, button")) return; // buttons keep working normally
-      const row = e.target.closest("tr[data-id]");
-      if (!row) return;
-      holdStart = { x: e.clientX, y: e.clientY };
-      holdRow = row;
-      row.classList.add("holding");
-      holdTimer = setTimeout(() => {
-        const id = row.dataset.id;
-        cancelHold();
-        if (navigator.vibrate) navigator.vibrate(30);
-        openMove(id);
-      }, 600);
+    top5.addEventListener("pointerdown", (e) => {
+      if (e.button > 0) return;
+      const li = e.target.closest("li[data-id]");
+      if (!li) return;
+      const tile = li.querySelector(".tile");
+      press = { li, tile, x: e.clientX, y: e.clientY, pointerId: e.pointerId };
+      tile.classList.add("pressing");
+      press.timer = setTimeout(() => startDrag(e.pointerId), HOLD_MS);
     });
-    $("rows").addEventListener("pointermove", (e) => {
-      // Scrolling the page is not a press-and-hold.
-      if (holdStart && Math.hypot(e.clientX - holdStart.x, e.clientY - holdStart.y) > 12) cancelHold();
+
+    function startDrag(pointerId) {
+      if (!press) return;
+      const { li, tile, x, y } = press;
+      press.tile.classList.remove("pressing");
+      press = null;
+      const r = li.getBoundingClientRect();
+      drag = { li, tile, grabX: x - r.left, grabY: y - r.top, from: tiles().indexOf(li), x, y };
+      tile.classList.add("dragging");
+      try { top5.setPointerCapture(pointerId); } catch {}
+      if (navigator.vibrate) navigator.vibrate(25);
+    }
+
+    // While dragging, stop the page from scrolling under the finger.
+    top5.addEventListener("touchmove", (e) => { if (drag) e.preventDefault(); }, { passive: false });
+
+    top5.addEventListener("pointermove", (e) => {
+      if (press && Math.hypot(e.clientX - press.x, e.clientY - press.y) > SLOP) cancelPress(); // they're scrolling
+      if (!drag) return;
+      drag.x = e.clientX; drag.y = e.clientY;
+
+      // Which spot is the finger over? Move the card there in the list.
+      const over = tiles().find((li) => {
+        if (li === drag.li) return false;
+        const r = li.getBoundingClientRect();
+        return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+      });
+      if (over) {
+        const list = tiles();
+        const before = list.indexOf(over) < list.indexOf(drag.li);
+        top5.insertBefore(drag.li, before ? over : over.nextSibling);
+        renumberTop5();
+      }
+      followFinger();
     });
-    ["pointerup", "pointercancel", "pointerleave"].forEach((t) => $("rows").addEventListener(t, cancelHold));
-    $("rows").addEventListener("contextmenu", (e) => { if (e.target.closest("tr[data-id]") && !e.target.closest("a")) e.preventDefault(); });
 
-    function fillMove() {
-      const list = ourList();
-      const i = list.findIndex((h) => h.id === moving);
-      const h = list[i];
-      if (!h) { $("move").close(); return; }
-      $("move-home").innerHTML = `<b>${i + 1}</b><div><strong>${esc(h.address)}</strong><span>${esc(h.city)} · ${h.price ? money(h.price) : ""}</span></div>`;
-      $("move-up").disabled = i === 0;
-      $("move-down").disabled = i === list.length - 1;
-      $("move-up").textContent = i === 0 ? "▲ Already our top choice" : `▲ Move up to #${i}`;
-      $("move-down").textContent = i === list.length - 1 ? "▼ Already at the bottom" : `▼ Move down to #${i + 2}`;
+    /** Keep the lifted card under the finger, wherever its slot in the list now is. */
+    function followFinger() {
+      drag.tile.style.transform = "none";
+      const r = drag.li.getBoundingClientRect();
+      const dx = drag.x - drag.grabX - r.left;
+      const dy = drag.y - drag.grabY - r.top;
+      drag.tile.style.transform = `translate(${dx}px, ${dy}px) scale(1.04)`;
     }
 
-    function openMove(id) {
-      moving = id;
-      $("move-error").textContent = "";
-      fillMove();
-      $("move").showModal();
+    function renumberTop5() {
+      tiles().forEach((li, i) => { li.querySelector(".n").textContent = i + 1; });
     }
 
-    async function move(direction) {
+    async function endDrag() {
+      cancelPress();
+      if (!drag) return;
+      const { li, tile, from } = drag;
+      drag = null;
+      tile.classList.remove("dragging");
+      tile.style.transform = "";
+      const to = tiles().indexOf(li);
+      if (to === from) return;
+      await moveTo(li.dataset.id, to);
+    }
+    ["pointerup", "pointercancel"].forEach((t) => top5.addEventListener(t, endDrag));
+    top5.addEventListener("contextmenu", (e) => { if (e.target.closest("li[data-id]")) e.preventDefault(); });
+
+    // Keyboard: arrow keys move the focused card one spot.
+    top5.addEventListener("keydown", (e) => {
+      const li = e.target.closest("li[data-id]");
+      if (!li) return;
+      const i = tiles().indexOf(li);
+      const step = { ArrowUp: -1, ArrowLeft: -1, ArrowDown: 1, ArrowRight: 1 }[e.key];
+      if (step && i + step >= 0 && i + step < tiles().length) {
+        e.preventDefault();
+        moveTo(li.dataset.id, i + step).then(() => top5.querySelector(`li[data-id="${CSS.escape(li.dataset.id)}"] .tile`)?.focus());
+      }
+      if (e.key === "Enter") document.getElementById("home-" + li.dataset.id)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+
+    /** Put a home at spot `to` (0 = #1), show it right away, then save to the Sheet. */
+    async function moveTo(id, to) {
       const list = ourList();
-      const i = list.findIndex((h) => h.id === moving);
-      const j = direction === "up" ? i - 1 : i + 1;
-      if (i < 0 || j < 0 || j >= list.length) return;
-      $("move-error").textContent = "";
-      $("move-up").disabled = $("move-down").disabled = true;
-      // Show the new order right away; the Sheet catches up a moment later.
       const before = list.map((h) => [h, h.rank]);
-      [list[i], list[j]] = [list[j], list[i]];
+      const from = list.findIndex((h) => h.id === id);
+      if (from < 0) return;
+      const [home] = list.splice(from, 1);
+      list.splice(to, 0, home);
       list.forEach((h, n) => { h.rank = n + 1; });
       render();
-      fillMove();
-      document.getElementById("home-" + moving)?.classList.add("moved");
+      top5.querySelector(`li[data-id="${CSS.escape(id)}"]`)?.classList.add("flash");
       try {
-        const ok = await save("move", moving, { direction });
+        const ok = await save("moveTo", id, { position: to + 1 });
         if (!ok) throw new Error("cancelled");
+        showToast(`${home.address} is now #${to + 1}.`);
       } catch (err) {
         before.forEach(([h, rank]) => { h.rank = rank; }); // put it back the way it was
         render();
-        $("move-error").textContent = err.message === "cancelled" ? "" : (err.message || "That didn't save. Please try again.");
+        if (err.message !== "cancelled") showToast("Sorry, that didn't save. Please try again.");
       }
-      fillMove();
     }
-
-    $("move-up").addEventListener("click", () => move("up"));
-    $("move-down").addEventListener("click", () => move("down"));
 
     /* ---------- Add from a Redfin link ---------- */
     let found = null; // the home Redfin told us about, waiting for "Add to our list"

@@ -10,6 +10,7 @@
  *   POST { action: "addRedfin", url, why, addedBy, passcode } -> { ok, home }
  *   POST { action: "remove",  id,   passcode }    -> { ok }
  *   POST { action: "move", id, direction: "up"|"down", passcode } -> { ok, order: [ids] }
+ *   POST { action: "moveTo", id, position: 1..n, passcode }       -> { ok, order: [ids] }
  *   POST { action: "restore", id,   passcode }    -> { ok }
  *
  * Reading is open to anyone with the URL; writing needs the passcode stored
@@ -105,6 +106,7 @@ function doPost(e) {
       case "add": return json_({ ok: true, home: addHome_(body.home) });
       case "addRedfin": return json_({ ok: true, home: addFromRedfin_(body) });
       case "move": return json_({ ok: true, order: moveHome_(body.id, body.direction) });
+      case "moveTo": return json_({ ok: true, order: moveHome_(body.id, null, Number(body.position)) });
       case "remove": setRemoved_(body.id, true); return json_({ ok: true });
       case "restore": setRemoved_(body.id, false); return json_({ ok: true });
       default: return json_({ ok: false, error: "Unknown action." });
@@ -197,7 +199,7 @@ function setRemoved_(id, removed) {
  * Move a home one spot up or down our ranked list, then renumber the list
  * 1, 2, 3... so gaps left by removed homes disappear. Returns the new order (ids).
  */
-function moveHome_(id, direction) {
+function moveHome_(id, direction, position) {
   const sheet = sheet_();
   const values = sheet.getDataRange().getValues();
   const header = values[0];
@@ -213,10 +215,17 @@ function moveHome_(id, direction) {
 
   const i = ranked.findIndex((h) => h.id === String(id));
   if (i < 0) throw new Error("Couldn't find that home on our list. Refresh the page and try again.");
-  const j = direction === "up" ? i - 1 : i + 1;
-  if (j < 0) throw new Error("It's already our top choice.");
-  if (j >= ranked.length) throw new Error("It's already at the bottom of the list.");
-  [ranked[i], ranked[j]] = [ranked[j], ranked[i]];
+  let j;
+  if (position) {
+    // Drag and drop: take the home out and put it at the requested spot (1 = top).
+    j = Math.max(0, Math.min(ranked.length - 1, Math.round(position) - 1));
+  } else {
+    j = direction === "up" ? i - 1 : i + 1;
+    if (j < 0) throw new Error("It's already our top choice.");
+    if (j >= ranked.length) throw new Error("It's already at the bottom of the list.");
+  }
+  const [home] = ranked.splice(i, 1);
+  ranked.splice(j, 0, home);
 
   ranked.forEach((h, n) => sheet.getRange(h.row + 1, cRank + 1).setValue(n + 1));
   return ranked.map((h) => h.id);

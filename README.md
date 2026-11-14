@@ -11,7 +11,7 @@ The page reads the **Homes** tab of our Google Sheet through the Apps Script web
 | You want to… | Do this |
 |---|---|
 | Remove a home | Tap **Remove** on the page (asks for the family passcode once per device). The Sheet's `removed` cell becomes `TRUE`. **Undo** or "Bring it back" reverses it. |
-| Change the order | **Press and hold** a home on the page, then tap **Move up** / **Move down** (or change the `rank` numbers in the Sheet). Each move swaps two homes and renumbers the list 1, 2, 3… |
+| Change the order | In **Our Top 5 at a glance**, **press and hold** a home, then **drag** it to a new spot (keyboard: focus a card and use the arrow keys). Or change the `rank` numbers in the Sheet. Every move renumbers the list 1, 2, 3… |
 | Add a home | Tap **＋ Add a home from Redfin**, paste the home's Redfin link, check the preview, and tap **Add to our list**. It goes to the bottom of the list. (Or add a row in the Sheet and give it a `rank`.) |
 | Change the notes | Edit `why`, `watch` or `deadline` in the Sheet. |
 
