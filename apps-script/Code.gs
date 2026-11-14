@@ -5,7 +5,7 @@
  *   GET  ?action=list                       -> { ok, homes: [...] }
  *   GET  ?action=csv                        -> our current list as CSV (for Excel)
  *   GET  ?action=csv&include=removed        -> same, plus removed homes
- *   GET  ?action=lookup&url=REDFIN_URL      -> { ok, home } preview from a Redfin link
+ *   GET  ?action=lookup&url=REDFIN_URL      -> { ok, home } preview from a Redfin link (web or app short link)
  *   POST { action: "add",     home, passcode }    -> { ok, home }
  *   POST { action: "addRedfin", url, why, addedBy, passcode } -> { ok, home }
  *   POST { action: "remove",  id, reason, passcode } -> { ok }   (reason is saved in removedReason)
@@ -282,13 +282,33 @@ function moveHome_(id, direction, position) {
 const REDFIN_URL = /^https:\/\/(www\.)?redfin\.com\/[A-Z]{2}\/[^?#\s]+\/home\/\d+/;
 
 /**
+ * The Redfin phone app shares short links like https://redf.in/rFnamM, often inside
+ * a sentence ("Check out this home I found on Redfin! https://redf.in/..."). Pull the
+ * link out of whatever was pasted, and if it's a short link, follow its redirects
+ * (one hop at a time, reading each Location header) until we reach redfin.com.
+ */
+function resolveShortLink_(pasted) {
+  const found = String(pasted || "").match(/https?:\/\/[^\s"'<>]+/i);
+  let url = found ? found[0] : String(pasted || "").trim();
+  if (/^(www\.)?redf\.in\//i.test(url)) url = "https://" + url; // pasted without https://
+  for (let hop = 0; hop < 5 && /^https?:\/\/(www\.)?redf\.in\//i.test(url); hop++) {
+    const res = UrlFetchApp.fetch(url, { followRedirects: false, muteHttpExceptions: true });
+    const headers = res.getAllHeaders();
+    const next = headers.Location || headers.location;
+    if (!next) break;
+    url = String(Array.isArray(next) ? next[0] : next);
+  }
+  return url.replace(/^http:/, "https:");
+}
+
+/**
  * Read a Redfin listing page and pull out the basics. Redfin's page summary
  * (meta description) looks like:
  *   "For Sale: 5 beds, 3.5 baths · 2339 sq. ft. · 479 Curling Crk Dr, Clayton, NC 27527 · $385,000 · MLS# 10193225 · ..."
  */
 function redfinLookup_(rawUrl) {
-  const match = String(rawUrl || "").trim().match(REDFIN_URL);
-  if (!match) throw new Error("That doesn't look like a Redfin home link. Open the home on Redfin and copy the address from the top of the browser.");
+  const match = resolveShortLink_(rawUrl).match(REDFIN_URL);
+  if (!match) throw new Error("That doesn't look like a Redfin home link. In the Redfin app, tap Share, then Copy link, and paste it here.");
   const url = match[0];
 
   const res = UrlFetchApp.fetch(url, {

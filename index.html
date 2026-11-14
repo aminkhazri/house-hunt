@@ -333,9 +333,9 @@
     <form id="add-form">
       <h2 id="add-title">Add a home</h2>
       <div id="add-step1">
-        <p>Open the home on Redfin, copy the web address from the top of the page, and paste it here.</p>
+        <p>In the Redfin app, tap <b>Share</b>, then <b>Copy link</b>. On the website, copy the address at the top of the page. Then paste it here.</p>
         <label for="add-url" class="sr-only">Redfin link</label>
-        <input id="add-url" type="url" inputmode="url" placeholder="https://www.redfin.com/NC/…" autocomplete="off">
+        <input id="add-url" type="text" inputmode="url" placeholder="https://redf.in/… or https://www.redfin.com/NC/…" autocomplete="off">
       </div>
       <div id="add-step2" hidden>
         <div class="preview" id="add-preview"></div>
@@ -864,8 +864,11 @@
       try {
         if (!found) {
           // Step 1: ask Google to read the Redfin page for us.
-          const url = $("add-url").value.trim();
-          if (!/redfin\.com\/.+\/home\/\d+/i.test(url)) throw new Error("Please paste a Redfin home link. It looks like https://www.redfin.com/NC/…/home/12345");
+          // Works with the website link (redfin.com/…/home/123) and the app's short link (redf.in/…),
+          // even if the app pasted it inside a sentence.
+          const pasted = $("add-url").value.trim();
+          const url = (pasted.match(/(https?:\/\/)?(www\.)?(redfin\.com|redf\.in)\/[^\s"'<>]+/i) || [""])[0];
+          if (!/redfin\.com\/.+\/home\/\d+|redf\.in\/\w+/i.test(url)) throw new Error("Please paste a Redfin home link. In the Redfin app, tap Share, then Copy link.");
           go.textContent = "Looking it up…";
           const res = await fetch(API + "?action=lookup&url=" + encodeURIComponent(url));
           const data = await res.json();

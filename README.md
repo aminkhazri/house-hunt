@@ -33,6 +33,10 @@ The web app also serves the current list as CSV at `…/exec?action=csv` (add `&
 
 Every add or remove in the Sheet or on the page then shows up in Excel automatically. Excel *reads* the list; changes happen on the page or in the Sheet.
 
+## Links from the Redfin app
+
+The Redfin phone app shares short links like `https://redf.in/rFnamM`, sometimes inside a sentence. The page pulls the link out of whatever was pasted, and the Apps Script follows the short link's redirects (`followRedirects: false`, reading each `Location` header) until it reaches the full redfin.com address. Tracking bits like `?utm_campaign=` are dropped before saving.
+
 ## Changing the order
 
 In the **Top 5** or the full **All our homes** list, press and hold a home (on its number, photo or address) and drag it up or down. While you drag near the top or bottom of the screen, the page scrolls for you. Or tap the ▲ ▼ buttons under a home's number to move it one spot. Either way the Sheet's `rank` column is renumbered 1, 2, 3…
