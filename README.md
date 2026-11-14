@@ -1,0 +1,125 @@
+# 🏡 Rachel's NC House Hunt
+
+A small web app for a family house hunt. Reviewers can browse the shortlist, filter it, open each home on Redfin, check the area's safety map, and **add or remove homes**. All changes save to a shared Google Sheet.
+
+**Stack:** HTML, CSS and vanilla JavaScript (ES modules), hosted free on GitHub Pages. The backend is a Google Sheet behind a Google Apps Script web app. No frameworks, no build step, no server to pay for.
+
+---
+
+## What it does
+
+- **Home cards** show the price, any drop from the original price, beds/baths/sqft, HOA, the estimated mortgage, a color-coded safety grade, and school scores drawn as small bars.
+- **One-tap links** on each card: the home's Redfin listing, the CrimeGrade safety map, and Google Maps. Cards show the listing photo, or a drawn house if there isn't one.
+- **Search, filters and sort**: by status (for sale / pending / sold / saved), city, max price and beds; sort by price, safety, biggest price drop, size or newest build.
+- **Add a home** from a form with validation (zip format, price parsing like `$385K`, safe links only).
+- **Remove a home**: there's a confirm step and an *Undo* toast, and removed homes move to a "Removed homes" drawer where anyone can put them back.
+- **♥ Save** favorites (kept per person, in their own browser).
+- Touches like button ripples, staggered card entrances, confetti when a home is added, dark mode, a mobile layout, and support for reduced-motion settings.
+
+## How it fits together
+
+```
+ Browser (GitHub Pages)                    Google
+┌──────────────────────────┐   GET  ?action=list    ┌──────────────────────┐     ┌──────────────┐
+│ index.html               │ ─────────────────────► │ Apps Script web app  │ ──► │ Google Sheet │
+│ js/app.js   (UI)         │                        │ apps-script/Code.gs  │     │  "Homes" tab │
+│ js/store.js (data layer) │ ◄───────────────────── │ doGet / doPost       │ ◄── │              │
+│ js/utils.js (pure fns)   │  POST {action,passcode}│ + passcode check     │     └──────────────┘
+└──────────────────────────┘                        └──────────────────────┘
+```
+
+| File | Job |
+|---|---|
+| `index.html` | Page structure, dialogs and the add form |
+| `css/styles.css` | Design tokens (colors, fonts), layout, components, animations, dark mode |
+| `js/config.js` | **The only file you edit**: paste your Apps Script URL here |
+| `js/app.js` | State, rendering, filtering/sorting, event handling |
+| `js/store.js` | Data layer: `DemoStore` (browser only) and `SheetStore` (Google Sheet), both with the same interface |
+| `js/utils.js` | Small pure helpers: formatting, safe links, grade ranking, price-drop math |
+| `js/effects.js` | Ripples, confetti, toasts |
+| `data/homes.json` | Starter list (57 homes) used in demo mode |
+| `apps-script/Code.gs` | The backend API |
+| `apps-script/Seed.gs` | Optional offline copy of the starter list (otherwise `setup()` downloads `data/homes.json`) |
+
+---
+
+## Setup
+
+You can test the site before connecting Google: with `scriptUrl` left empty it runs in **demo mode**, where changes save only in your browser.
+
+### 1. Put it on GitHub Pages
+
+1. Create a new public repo on GitHub, for example `house-hunt`.
+2. Upload everything in this folder (keep the folder structure), or push it with git:
+   ```bash
+   git init && git add . && git commit -m "House hunt site"
+   git branch -M main
+   git remote add origin https://github.com/<your-username>/house-hunt.git
+   git push -u origin main
+   ```
+3. In the repo, go to **Settings → Pages → Build and deployment**, set **Source: Deploy from a branch**, **Branch: main / (root)**, then **Save**.
+4. After a minute or so the site is live at `https://<your-username>.github.io/house-hunt/`.
+
+> **Concept: static hosting.** GitHub Pages only serves files and can't run code on its servers. That's why saving changes needs a separate backend, the Apps Script in step 2.
+
+### 2. Turn the Google Sheet into an API
+
+1. Open the **Rachel House Inventory** Google Sheet, then go to **Extensions → Apps Script**.
+2. Rename the project "House Hunt API". Replace the contents of `Code.gs` with `apps-script/Code.gs` from this repo.
+3. *(Optional)* Click **+ → Script**, name it `Seed`, and paste in `apps-script/Seed.gs`. Without it, `setup()` downloads the same starter list from `data/homes.json` in this repo.
+4. Pick **setup** in the function dropdown and click **Run**. Google asks you to authorize the script: choose your account, then **Advanced → Go to House Hunt API → Allow**. (The warning appears because the script is yours and hasn't been reviewed by Google; that's normal for personal scripts.)
+5. Open **Execution log**. It shows your **family passcode**, for example `porch-4821`. A new **Homes** tab now exists in the sheet with all 57 homes.
+   - To change the passcode: ⚙️ **Project Settings → Script Properties → PASSCODE**.
+6. Click **Deploy → New deployment → ⚙️ → Web app** and set:
+   - **Execute as:** Me
+   - **Who has access:** Anyone
+   - Click **Deploy** and copy the **Web app URL** (it ends in `/exec`).
+
+> **Concept: soft delete.** "Remove" never deletes a row. It sets `removed = TRUE` and a timestamp, so nothing is lost and anything can be put back from the page or the sheet.
+>
+> **Concept: locking.** `LockService` makes simultaneous writes wait their turn, so two reviewers adding homes at the same moment can't overwrite each other.
+
+### 3. Connect the site to the sheet
+
+Edit `js/config.js`:
+
+```js
+export const CONFIG = {
+  scriptUrl: "https://script.google.com/macros/s/AKfy.../exec",
+  ...
+};
+```
+
+Commit and push. The badge above the cards changes from **Demo** to **Live**.
+
+### 4. Share it
+
+Send reviewers the GitHub Pages link and the passcode. The first time they add or remove a home, the page asks for the passcode and remembers it on that device.
+
+### Updating the backend later
+
+If you change `Code.gs`, go to **Deploy → Manage deployments → ✏️ Edit → Version: New version → Deploy**. The URL stays the same, so `config.js` doesn't need to change.
+
+---
+
+## Security notes
+
+- **Reading** the list is open to anyone with the Apps Script URL. Don't put anything private in the sheet.
+- **Writing** requires the passcode, which is checked on the server, so someone can't skip it by editing the page.
+- Everything sent to the server is cleaned up there: text is trimmed and length-limited, numbers are coerced, and only `http(s)` links are accepted.
+- Everything shown on the page goes through `esc()` to block HTML injection, and links go through `safeUrl()` so `javascript:` URLs never become clickable.
+- The passcode keeps random visitors out. It isn't strong account security; for that you'd add Google sign-in.
+
+## Things worth pointing out in a portfolio
+
+- **Separation of concerns:** the UI (`app.js`) never knows where data lives. It calls `store.load() / add() / remove() / restore()`, and the demo and live stores both implement that interface (a simple strategy pattern).
+- **Pure functions** in `utils.js` hold the logic that's easy to get wrong (price parsing, grade ranking, link building). They can be tested without a browser.
+- **Event delegation:** one click listener on the grid handles every card's buttons, including cards added later.
+- **CORS without a proxy:** writes are sent as `text/plain` so the browser treats them as "simple requests" and skips the preflight that Apps Script can't answer.
+- **Accessibility:** native `<dialog>`s, labeled controls, visible focus rings, `aria-live` regions for counts and toasts, a skip link, and full support for `prefers-reduced-motion`.
+- **Design tokens:** every color and font comes from CSS custom properties, which is how dark mode can be a single block.
+
+## Ideas for later
+
+- A comments thread or 👍/👎 votes per home.
+- A map view with every home pinned.

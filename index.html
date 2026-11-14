@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rachel's NC House Hunt</title>
+  <meta name="description" content="A shared shortlist of homes in the Raleigh area, with Redfin, safety and map links.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 48 48%27%3E%3Cpath d=%27M6 22 24 7l18 15M11 20v20h26V20%27 fill=%27none%27 stroke=%27%232f7a5b%27 stroke-width=%274%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#grid">Skip to homes</a>
+
+  <header class="masthead">
+    <div class="masthead__inner">
+      <div class="brand">
+        <svg class="brand__logo" viewBox="0 0 48 48" aria-hidden="true">
+          <path d="M6 22 24 7l18 15" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M11 20v20h26V20" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/>
+          <path d="M24 35s-7-4.3-7-9a3.8 3.8 0 0 1 7-2 3.8 3.8 0 0 1 7 2c0 4.7-7 9-7 9Z" fill="var(--pop)"/>
+        </svg>
+        <div>
+          <h1>Rachel's NC House Hunt</h1>
+          <p class="brand__sub">Homes we're watching around Clayton, Angier &amp; Willow Spring</p>
+        </div>
+      </div>
+      <dl class="stats" id="stats" aria-live="polite"></dl>
+    </div>
+  </header>
+
+  <section class="toolbar" aria-label="Search and filters">
+    <div class="toolbar__inner">
+      <label class="search">
+        <span class="sr-only">Search homes</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="q" type="search" placeholder="Search address, neighborhood, notes…" autocomplete="off">
+      </label>
+
+      <div class="segmented" role="radiogroup" aria-label="Status" id="status-filter">
+        <button type="button" role="radio" data-status="Active" aria-checked="true">For sale</button>
+        <button type="button" role="radio" data-status="Pending" aria-checked="false">Pending</button>
+        <button type="button" role="radio" data-status="Sold" aria-checked="false">Sold</button>
+        <button type="button" role="radio" data-status="Favorites" aria-checked="false">♥ Saved</button>
+        <button type="button" role="radio" data-status="All" aria-checked="false">All</button>
+      </div>
+
+      <div class="selects">
+        <label><span>City</span>
+          <select id="city"><option value="">All cities</option></select>
+        </label>
+        <label><span>Max price</span>
+          <select id="max-price">
+            <option value="">Any</option>
+            <option value="350000">$350K</option>
+            <option value="375000">$375K</option>
+            <option value="400000">$400K</option>
+            <option value="425000">$425K</option>
+          </select>
+        </label>
+        <label><span>Beds</span>
+          <select id="beds">
+            <option value="">Any</option>
+            <option value="3">3+</option>
+            <option value="4">4+</option>
+            <option value="5">5+</option>
+          </select>
+        </label>
+        <label><span>Sort</span>
+          <select id="sort">
+            <option value="price-asc">Price: low to high</option>
+            <option value="price-desc">Price: high to low</option>
+            <option value="safety">Safest first</option>
+            <option value="drop">Biggest price drop</option>
+            <option value="sqft">Most space</option>
+            <option value="newest">Newest build</option>
+          </select>
+        </label>
+      </div>
+    </div>
+  </section>
+
+  <main class="wrap">
+    <div class="results-bar">
+      <p id="result-count" aria-live="polite"></p>
+      <p class="mode" id="mode-pill"></p>
+    </div>
+    <div id="grid" class="grid" tabindex="-1"></div>
+    <p id="empty" class="empty" hidden>No homes match those filters. Try clearing the search or picking "All".</p>
+
+    <details class="removed" id="removed">
+      <summary>Removed homes <span id="removed-count">0</span></summary>
+      <ul id="removed-list"></ul>
+    </details>
+  </main>
+
+  <button type="button" class="fab" id="add-btn" aria-haspopup="dialog">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+    <span>Add a home</span>
+  </button>
+
+  <!-- Add home -->
+  <dialog id="add-dialog" class="sheet" aria-labelledby="add-title">
+    <form id="add-form" novalidate>
+      <header class="sheet__head">
+        <h2 id="add-title">Add a home</h2>
+        <button type="button" class="icon-btn" data-close aria-label="Close">✕</button>
+      </header>
+      <div class="form-grid">
+        <label class="span-2">Street address<input id="f-address" name="address" required placeholder="123 Maple Drive"></label>
+        <label>City<input id="f-city" name="city" required list="city-options" placeholder="Clayton"></label>
+        <label>Zip<input id="f-zip" name="zip" required inputmode="numeric" pattern="\d{5}" maxlength="5" placeholder="27527"></label>
+        <label>Asking price<input id="f-price" name="price" required inputmode="numeric" placeholder="$385,000"></label>
+        <label>Safety grade
+          <select id="f-safety" name="safety">
+            <option value="">Not sure</option>
+            <option>A+</option><option>A</option><option>A-</option>
+            <option>B+</option><option>B</option><option>B-</option>
+            <option>C+</option><option>C</option><option>C-</option>
+            <option>D</option><option>F</option>
+          </select>
+        </label>
+        <label>Beds<input id="f-beds" name="beds" type="number" min="0" max="12" step="1" placeholder="4"></label>
+        <label>Baths<input id="f-baths" name="baths" type="number" min="0" max="12" step="0.5" placeholder="2.5"></label>
+        <label>Square feet<input id="f-sqft" name="sqft" type="number" min="0" step="1" placeholder="2200"></label>
+        <label>Year built<input id="f-year" name="yearBuilt" type="number" min="1800" max="2100" step="1" placeholder="2015"></label>
+        <label>HOA $/month<input id="f-hoa" name="hoa" type="number" min="0" step="1" placeholder="60"></label>
+        <label>Neighborhood<input id="f-hood" name="neighborhood" placeholder="Riverwood"></label>
+        <label class="span-2">Redfin link <small>(optional)</small><input id="f-redfin" name="redfinUrl" type="url" placeholder="https://www.redfin.com/NC/…"></label>
+        <label class="span-2">Notes<textarea id="f-notes" name="notes" rows="3" placeholder="Corner lot, fenced yard, close to schools…"></textarea></label>
+        <label class="span-2">Your name<input id="f-by" name="addedBy" placeholder="So everyone knows who added it"></label>
+      </div>
+      <datalist id="city-options"></datalist>
+      <p class="form-error" id="add-error" role="alert"></p>
+      <footer class="sheet__foot">
+        <button type="button" class="btn btn--ghost" data-close>Cancel</button>
+        <button type="submit" class="btn btn--primary">Add to list</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <!-- Confirm remove -->
+  <dialog id="confirm-dialog" class="sheet sheet--small" aria-labelledby="confirm-title">
+    <form method="dialog">
+      <h2 id="confirm-title">Remove this home?</h2>
+      <p id="confirm-text"></p>
+      <footer class="sheet__foot">
+        <button value="cancel" class="btn btn--ghost">Keep it</button>
+        <button value="ok" class="btn btn--danger">Remove</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <!-- Passcode (live mode only) -->
+  <dialog id="pass-dialog" class="sheet sheet--small" aria-labelledby="pass-title">
+    <form id="pass-form">
+      <h2 id="pass-title">Enter the family passcode</h2>
+      <p>Changes save to the shared list, so adding and removing homes needs the passcode Rachel shared with you.</p>
+      <label>Passcode<input id="pass-input" type="password" autocomplete="current-password" required></label>
+      <p class="form-error" id="pass-error" role="alert"></p>
+      <footer class="sheet__foot">
+        <button type="button" class="btn btn--ghost" data-close>Cancel</button>
+        <button type="submit" class="btn btn--primary">Unlock</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
