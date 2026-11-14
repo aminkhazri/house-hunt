@@ -47,7 +47,7 @@ Under each home there's a **💬 Add a comment** button. Comments go into a **Co
 
 ## The family passcode
 
-Every change goes through the Apps Script, which checks the passcode on the server. **Remove** asks for it every time. **Adding a home doesn't need it**: anyone with the page can add one (it can always be removed). **Add a comment** asks for the passcode, unless you typed it in the last 5 minutes. Dragging in the Top 5, **Undo** and **Bring it back** reuse a passcode typed in the last 5 minutes, so they don't nag right after you typed it. Nothing is saved on the device: close the page and it's forgotten.
+Every change goes through the Apps Script, which checks the passcode on the server. **Remove** asks for it every time. **Adding a home doesn't need it**: anyone with the page can add one (it can always be removed). **Add a comment** asks for the passcode, unless you typed it in the last 5 minutes. **Changing the order** (dragging or ▲ ▼) doesn't need it either. **Undo** and **Bring it back** reuse a passcode typed in the last 5 minutes, so they don't nag right after you typed it. Nothing is saved on the device: close the page and it's forgotten.
 
 ## How the top 10 were picked
 

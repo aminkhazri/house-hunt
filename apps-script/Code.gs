@@ -9,8 +9,8 @@
  *   POST { action: "add",     home, passcode }    -> { ok, home }
  *   POST { action: "addRedfin", url, why, addedBy }  -> { ok, home }   (no passcode needed)
  *   POST { action: "remove",  id, reason, passcode } -> { ok }   (reason is saved in removedReason)
- *   POST { action: "move", id, direction: "up"|"down", passcode } -> { ok, order: [ids] }
- *   POST { action: "moveTo", id, position: 1..n, passcode }       -> { ok, order: [ids] }
+ *   POST { action: "move", id, direction: "up"|"down" } -> { ok, order: [ids] }   (no passcode needed)
+ *   POST { action: "moveTo", id, position: 1..n }       -> { ok, order: [ids] }   (no passcode needed)
  *   POST { action: "restore", id,   passcode }    -> { ok }
  *   POST { action: "comment", id, name, text, passcode } -> { ok, comment }  (saved in the Comments tab)
  *
@@ -101,9 +101,9 @@ function doPost(e) {
   try {
     const body = JSON.parse((e && e.postData && e.postData.contents) || "{}");
     const expected = PropertiesService.getScriptProperties().getProperty("PASSCODE");
-    // Adding a home from Redfin is open to anyone with the page (it can always be removed);
+    // Adding a home and changing the order are open to anyone with the page (both easy to undo);
     // every other change needs the family passcode.
-    const open = body.action === "addRedfin";
+    const open = ["addRedfin", "move", "moveTo"].indexOf(body.action) >= 0;
     if (!open && (!expected || String(body.passcode || "") !== expected)) {
       return json_({ ok: false, error: "bad_passcode" });
     }
