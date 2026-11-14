@@ -1,4 +1,31 @@
-# 🏡 Rachel's NC House Hunt
+# 🏡 Our Top 10 Homes: NC House Hunt
+
+**Live page:** https://aminkhazri.github.io/house-hunt/
+
+One bright, simple page for our family of four to see the homes we picked, ranked with **#1 at the top**. It was built for readers who aren't comfortable with technology: large text, one table, two buttons per home (**See photos** opens the Redfin listing, **Map** opens Google Maps), and nothing hidden behind menus. On phones and tablets each row becomes its own block with the same labels.
+
+## Updating the list
+
+Everything lives in one file, `index.html`. Near the bottom is a list called `HOMES`, and **the order of that list is the ranking**.
+
+- **Change the order:** move a home's `{ ... }` block up or down.
+- **Remove a home:** delete its block, including the comma after it.
+- **Add a home:** copy a block, change the details, and paste it where it belongs.
+
+On GitHub you can do this in the browser: open `index.html`, click the ✏️ pencil, edit, then click **Commit changes**. The live page updates within a minute or so.
+
+## How the top 10 were picked
+
+1. **Only homes still for sale.** Each listing's status and current price were checked on Redfin (Nov 14, 2026); sold, pending and off-market homes were dropped.
+2. **A score out of 100:** safety grade (40), value in $ per sq ft (25), price (15), school ratings (10), and size and age (10).
+3. **Our notes count too:** real problems (foundation issues, "forget it") cost 15 points, smaller worries (noise, small yard) cost 5, and pluses (corner lot, cul-de-sac, wooded yard) add a little.
+
+---
+
+# The explorer (portfolio version)
+
+`/explorer/` is the full version of the project: every home we looked at, with search, filters, and adding and removing homes saved to a Google Sheet through Apps Script. The family page doesn't need any of it; it's kept here as a portfolio piece.
+
 
 A small web app for a family house hunt. Reviewers can browse the shortlist, filter it, open each home on Redfin, check the area's safety map, and **add or remove homes**. All changes save to a shared Google Sheet.
 
@@ -30,16 +57,16 @@ A small web app for a family house hunt. Reviewers can browse the shortlist, fil
 
 | File | Job |
 |---|---|
-| `index.html` | Page structure, dialogs and the add form |
-| `css/styles.css` | Design tokens (colors, fonts), layout, components, animations, dark mode |
-| `js/config.js` | **The only file you edit**: paste your Apps Script URL here |
-| `js/app.js` | State, rendering, filtering/sorting, event handling |
-| `js/store.js` | Data layer: `DemoStore` (browser only) and `SheetStore` (Google Sheet), both with the same interface |
-| `js/utils.js` | Small pure helpers: formatting, safe links, grade ranking, price-drop math |
-| `js/effects.js` | Ripples, confetti, toasts |
-| `data/homes.json` | Starter list (57 homes) used in demo mode |
+| `explorer/index.html` | Page structure, dialogs and the add form |
+| `explorer/css/styles.css` | Design tokens (colors, fonts), layout, components, animations, dark mode |
+| `explorer/js/config.js` | **The only file you edit**: paste your Apps Script URL here |
+| `explorer/js/app.js` | State, rendering, filtering/sorting, event handling |
+| `explorer/js/store.js` | Data layer: `DemoStore` (browser only) and `SheetStore` (Google Sheet), both with the same interface |
+| `explorer/js/utils.js` | Small pure helpers: formatting, safe links, grade ranking, price-drop math |
+| `explorer/js/effects.js` | Ripples, confetti, toasts |
+| `explorer/data/homes.json` | Starter list (57 homes) used in demo mode |
 | `apps-script/Code.gs` | The backend API |
-| `apps-script/Seed.gs` | Optional offline copy of the starter list (otherwise `setup()` downloads `data/homes.json`) |
+| `apps-script/Seed.gs` | Optional offline copy of the starter list (otherwise `setup()` downloads `explorer/data/homes.json`) |
 
 ---
 
@@ -58,7 +85,7 @@ You can test the site before connecting Google: with `scriptUrl` left empty it r
    git push -u origin main
    ```
 3. In the repo, go to **Settings → Pages → Build and deployment**, set **Source: Deploy from a branch**, **Branch: main / (root)**, then **Save**.
-4. After a minute or so the site is live at `https://<your-username>.github.io/house-hunt/`.
+4. After a minute or so the site is live at `https://<your-username>.github.io/house-hunt/` (the family page) and `/house-hunt/explorer/` (the explorer).
 
 > **Concept: static hosting.** GitHub Pages only serves files and can't run code on its servers. That's why saving changes needs a separate backend, the Apps Script in step 2.
 
@@ -66,7 +93,7 @@ You can test the site before connecting Google: with `scriptUrl` left empty it r
 
 1. Open the **Rachel House Inventory** Google Sheet, then go to **Extensions → Apps Script**.
 2. Rename the project "House Hunt API". Replace the contents of `Code.gs` with `apps-script/Code.gs` from this repo.
-3. *(Optional)* Click **+ → Script**, name it `Seed`, and paste in `apps-script/Seed.gs`. Without it, `setup()` downloads the same starter list from `data/homes.json` in this repo.
+3. *(Optional)* Click **+ → Script**, name it `Seed`, and paste in `apps-script/Seed.gs`. Without it, `setup()` downloads the same starter list from `explorer/data/homes.json` in this repo.
 4. Pick **setup** in the function dropdown and click **Run**. Google asks you to authorize the script: choose your account, then **Advanced → Go to House Hunt API → Allow**. (The warning appears because the script is yours and hasn't been reviewed by Google; that's normal for personal scripts.)
 5. Open **Execution log**. It shows your **family passcode**, for example `porch-4821`. A new **Homes** tab now exists in the sheet with all 57 homes.
    - To change the passcode: ⚙️ **Project Settings → Script Properties → PASSCODE**.
@@ -81,7 +108,7 @@ You can test the site before connecting Google: with `scriptUrl` left empty it r
 
 ### 3. Connect the site to the sheet
 
-Edit `js/config.js`:
+Edit `explorer/js/config.js`:
 
 ```js
 export const CONFIG = {

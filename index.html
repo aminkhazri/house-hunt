@@ -3,172 +3,280 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Rachel's NC House Hunt</title>
-  <meta name="description" content="A shared shortlist of homes in the Raleigh area, with Redfin, safety and map links.">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 48 48%27%3E%3Cpath d=%27M6 22 24 7l18 15M11 20v20h26V20%27 fill=%27none%27 stroke=%27%232f7a5b%27 stroke-width=%274%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E">
+  <title>Our Top 10 Homes</title>
+  <meta name="description" content="The 10 homes our family likes best, ranked with #1 at the top.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 48 48%27%3E%3Cpath d=%27M6 22 24 7l18 15M11 20v20h26V20%27 fill=%27none%27 stroke=%27%231e6fd9%27 stroke-width=%274%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;800;900&display=swap" rel="stylesheet">
+  <style>
+    /* One bright, readable table. Big text, high contrast, nothing hidden behind clicks. */
+    :root {
+      --page: #f4f9ff;        /* soft sky white */
+      --paper: #ffffff;
+      --ink: #1d2733;
+      --muted: #4b5b6b;
+      --line: #d5e2f0;
+      --sky: #1e6fd9;         /* links and buttons */
+      --sun: #ffd447;         /* the #1 highlight */
+      --sun-soft: #fff6d1;
+      --leaf: #1f8a4c;        /* good safety / savings */
+      --stripe: #f3f8fe;
+      --font: "Nunito", "Segoe UI", system-ui, -apple-system, sans-serif;
+      color-scheme: light;
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0; background: var(--page); color: var(--ink);
+      font: 400 20px/1.5 var(--font);
+    }
+    a { color: var(--sky); }
+    :focus-visible { outline: 4px solid var(--sun); outline-offset: 2px; border-radius: 6px; }
+
+    .wrap { width: min(1240px, 100% - 32px); margin-inline: auto; }
+
+    header { background: var(--sky); color: #fff; padding: 28px 0 24px; }
+    header h1 { margin: 0; font-size: 2.2rem; font-weight: 900; line-height: 1.15; }
+    header p { margin: 6px 0 0; font-size: 1.15rem; opacity: .95; max-width: 60ch; }
+    .checked { display: inline-block; margin-top: 12px; background: rgb(255 255 255 / .18); padding: 4px 12px; border-radius: 999px; font-size: .95rem; }
+
+    main { padding: 26px 0 48px; }
+    .how { margin: 0 0 18px; font-size: 1.05rem; color: var(--muted); }
+    .how b { color: var(--ink); }
+
+    table {
+      width: 100%; border-collapse: separate; border-spacing: 0;
+      background: var(--paper); border: 2px solid var(--line); border-radius: 16px; overflow: hidden;
+      box-shadow: 0 6px 24px rgb(30 111 217 / .08);
+    }
+    caption { text-align: left; font-weight: 800; font-size: 1.3rem; padding: 0 0 10px; }
+    thead th {
+      background: #e8f1fd; text-align: left; font-size: .85rem; font-weight: 800;
+      text-transform: uppercase; letter-spacing: .04em; color: var(--muted);
+      padding: 12px 10px; border-bottom: 2px solid var(--line);
+    }
+    tbody td { padding: 14px 10px; vertical-align: top; border-bottom: 1px solid var(--line); }
+    tbody tr:nth-child(even) td { background: var(--stripe); }
+    tbody tr:last-child td { border-bottom: 0; }
+    tbody tr.top td { background: var(--sun-soft); }
+    tbody tr.top td:first-child { box-shadow: inset 8px 0 0 var(--sun); }
+
+    .rank { width: 64px; text-align: center; }
+    .rank b { display: inline-grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: var(--sky); color: #fff; font-size: 1.4rem; font-weight: 900; }
+    tr.top .rank b { background: var(--sun); color: var(--ink); }
+    .badge { display: block; margin-top: 6px; font-size: .8rem; font-weight: 900; color: #8a6400; text-transform: uppercase; }
+
+    .photo { width: 140px; }
+    .photo img { width: 128px; height: 92px; object-fit: cover; border-radius: 10px; display: block; background: var(--line); }
+
+    .home strong { display: block; font-size: 1.15rem; font-weight: 800; }
+    .home span { color: var(--muted); }
+
+    .num { white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .price strong { font-size: 1.25rem; font-weight: 900; }
+    .drop { display: block; color: var(--leaf); font-weight: 800; font-size: .95rem; }
+
+    .safety b { display: inline-block; min-width: 46px; text-align: center; padding: 2px 8px; border-radius: 8px; background: var(--leaf); color: #fff; font-weight: 900; }
+    .safety b.mid { background: #c98a00; }
+
+    .why { min-width: 240px; font-size: .95rem; }
+    .size span { color: var(--muted); }
+    .home { min-width: 150px; }
+    .why p { margin: 0; }
+    .why .watch { margin-top: 6px; color: #9a3412; }
+    .why .watch::before { content: "Keep in mind: "; font-weight: 800; }
+    .deadline { display: inline-block; margin-top: 6px; background: #ffe1e1; color: #a11d1d; font-weight: 800; padding: 2px 10px; border-radius: 8px; }
+
+    .links { width: 128px; }
+    .btn {
+      display: block; text-align: center; text-decoration: none; font-weight: 800;
+      padding: 10px 12px; border-radius: 12px; margin-bottom: 8px; font-size: 1rem;
+      background: var(--sky); color: #fff; border: 2px solid var(--sky);
+    }
+    .btn.light { background: #fff; color: var(--sky); }
+    .btn:hover { filter: brightness(1.08); }
+
+    footer { color: var(--muted); font-size: 1rem; padding: 8px 0 40px; }
+    footer p { max-width: 70ch; }
+
+    /* Phones and tablets: each home becomes its own block, same order, same labels. */
+    @media (max-width: 1100px) {
+      body { font-size: 19px; }
+      header h1 { font-size: 1.8rem; }
+      table, thead, tbody, tr, td, caption { display: block; width: 100%; }
+      thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+      table { border: 0; background: transparent; box-shadow: none; overflow: visible; }
+      tbody tr { background: var(--paper); border: 2px solid var(--line); border-radius: 16px; margin-bottom: 18px; overflow: hidden; }
+      tbody tr.top { border-color: var(--sun); border-width: 4px; background: var(--sun-soft); }
+      tbody td, tbody tr:nth-child(even) td { background: transparent; border: 0; padding: 6px 16px; }
+      tbody tr.top td { background: var(--sun-soft); }
+      tbody tr.top td:first-child { box-shadow: none; }
+      td[data-label]::before { content: attr(data-label); display: block; font-size: .8rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+      .rank { text-align: left; padding-top: 16px; display: flex !important; align-items: center; gap: 12px; }
+      .rank b { flex: none; }
+      .badge { margin: 0; font-size: 1rem; }
+      .photo { width: 100%; }
+      .photo img { width: 100%; height: 210px; }
+      .links { width: 100%; display: flex !important; gap: 10px; padding-bottom: 16px !important; }
+      .btn { flex: 1; margin: 0; }
+    }
+    @media print {
+      header { background: none; color: var(--ink); }
+      .btn { border: 0; padding: 0; text-align: left; color: var(--ink); }
+    }
+  </style>
 </head>
 <body>
-  <a class="skip-link" href="#grid">Skip to homes</a>
-
-  <header class="masthead">
-    <div class="masthead__inner">
-      <div class="brand">
-        <svg class="brand__logo" viewBox="0 0 48 48" aria-hidden="true">
-          <path d="M6 22 24 7l18 15" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M11 20v20h26V20" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/>
-          <path d="M24 35s-7-4.3-7-9a3.8 3.8 0 0 1 7-2 3.8 3.8 0 0 1 7 2c0 4.7-7 9-7 9Z" fill="var(--pop)"/>
-        </svg>
-        <div>
-          <h1>Rachel's NC House Hunt</h1>
-          <p class="brand__sub">Homes we're watching around Clayton, Angier &amp; Willow Spring</p>
-        </div>
-      </div>
-      <dl class="stats" id="stats" aria-live="polite"></dl>
+  <header>
+    <div class="wrap">
+      <h1>Our Top 10 Homes</h1>
+      <p>The homes we like best near Clayton, Angier and Willow Spring. Our favorite, #1, is at the top.</p>
+      <span class="checked">Prices checked on Redfin: November 14, 2026</span>
     </div>
   </header>
 
-  <section class="toolbar" aria-label="Search and filters">
-    <div class="toolbar__inner">
-      <label class="search">
-        <span class="sr-only">Search homes</span>
-        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-        <input id="q" type="search" placeholder="Search address, neighborhood, notes…" autocomplete="off">
-      </label>
-
-      <div class="segmented" role="radiogroup" aria-label="Status" id="status-filter">
-        <button type="button" role="radio" data-status="Active" aria-checked="true">For sale</button>
-        <button type="button" role="radio" data-status="Pending" aria-checked="false">Pending</button>
-        <button type="button" role="radio" data-status="Sold" aria-checked="false">Sold</button>
-        <button type="button" role="radio" data-status="Favorites" aria-checked="false">♥ Saved</button>
-        <button type="button" role="radio" data-status="All" aria-checked="false">All</button>
-      </div>
-
-      <div class="selects">
-        <label><span>City</span>
-          <select id="city"><option value="">All cities</option></select>
-        </label>
-        <label><span>Max price</span>
-          <select id="max-price">
-            <option value="">Any</option>
-            <option value="350000">$350K</option>
-            <option value="375000">$375K</option>
-            <option value="400000">$400K</option>
-            <option value="425000">$425K</option>
-          </select>
-        </label>
-        <label><span>Beds</span>
-          <select id="beds">
-            <option value="">Any</option>
-            <option value="3">3+</option>
-            <option value="4">4+</option>
-            <option value="5">5+</option>
-          </select>
-        </label>
-        <label><span>Sort</span>
-          <select id="sort">
-            <option value="price-asc">Price: low to high</option>
-            <option value="price-desc">Price: high to low</option>
-            <option value="safety">Safest first</option>
-            <option value="drop">Biggest price drop</option>
-            <option value="sqft">Most space</option>
-            <option value="newest">Newest build</option>
-          </select>
-        </label>
-      </div>
-    </div>
-  </section>
-
   <main class="wrap">
-    <div class="results-bar">
-      <p id="result-count" aria-live="polite"></p>
-      <p class="mode" id="mode-pill"></p>
-    </div>
-    <div id="grid" class="grid" tabindex="-1"></div>
-    <p id="empty" class="empty" hidden>No homes match those filters. Try clearing the search or picking "All".</p>
+    <p class="how"><b>How to use this page:</b> tap <b>See photos</b> to see inside each home on Redfin, or <b>Map</b> to see where it is.</p>
 
-    <details class="removed" id="removed">
-      <summary>Removed homes <span id="removed-count">0</span></summary>
-      <ul id="removed-list"></ul>
-    </details>
+    <table>
+      <caption class="sr-only">Our top 10 homes, best first</caption>
+      <thead>
+        <tr>
+          <th scope="col">Rank</th>
+          <th scope="col">Photo</th>
+          <th scope="col">Home</th>
+          <th scope="col">Price</th>
+          <th scope="col">Size</th>
+          <th scope="col">Safety</th>
+          <th scope="col">Why we like it</th>
+          <th scope="col">Look at it</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
   </main>
 
-  <button type="button" class="fab" id="add-btn" aria-haspopup="dialog">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-    <span>Add a home</span>
-  </button>
+  <footer class="wrap">
+    <p><b>How we picked:</b> we only included homes that are still for sale. Then we ranked them by neighborhood safety grade first, then by value (how much house you get for the price), the price itself, school ratings, size and age, and our own notes from looking at each listing.</p>
+    <p>Safety grades come from CrimeGrade.org (A+ is safest). Photos and prices come from Redfin.</p>
+  </footer>
 
-  <!-- Add home -->
-  <dialog id="add-dialog" class="sheet" aria-labelledby="add-title">
-    <form id="add-form" novalidate>
-      <header class="sheet__head">
-        <h2 id="add-title">Add a home</h2>
-        <button type="button" class="icon-btn" data-close aria-label="Close">✕</button>
-      </header>
-      <div class="form-grid">
-        <label class="span-2">Street address<input id="f-address" name="address" required placeholder="123 Maple Drive"></label>
-        <label>City<input id="f-city" name="city" required list="city-options" placeholder="Clayton"></label>
-        <label>Zip<input id="f-zip" name="zip" required inputmode="numeric" pattern="\d{5}" maxlength="5" placeholder="27527"></label>
-        <label>Asking price<input id="f-price" name="price" required inputmode="numeric" placeholder="$385,000"></label>
-        <label>Safety grade
-          <select id="f-safety" name="safety">
-            <option value="">Not sure</option>
-            <option>A+</option><option>A</option><option>A-</option>
-            <option>B+</option><option>B</option><option>B-</option>
-            <option>C+</option><option>C</option><option>C-</option>
-            <option>D</option><option>F</option>
-          </select>
-        </label>
-        <label>Beds<input id="f-beds" name="beds" type="number" min="0" max="12" step="1" placeholder="4"></label>
-        <label>Baths<input id="f-baths" name="baths" type="number" min="0" max="12" step="0.5" placeholder="2.5"></label>
-        <label>Square feet<input id="f-sqft" name="sqft" type="number" min="0" step="1" placeholder="2200"></label>
-        <label>Year built<input id="f-year" name="yearBuilt" type="number" min="1800" max="2100" step="1" placeholder="2015"></label>
-        <label>HOA $/month<input id="f-hoa" name="hoa" type="number" min="0" step="1" placeholder="60"></label>
-        <label>Neighborhood<input id="f-hood" name="neighborhood" placeholder="Riverwood"></label>
-        <label class="span-2">Redfin link <small>(optional)</small><input id="f-redfin" name="redfinUrl" type="url" placeholder="https://www.redfin.com/NC/…"></label>
-        <label class="span-2">Notes<textarea id="f-notes" name="notes" rows="3" placeholder="Corner lot, fenced yard, close to schools…"></textarea></label>
-        <label class="span-2">Your name<input id="f-by" name="addedBy" placeholder="So everyone knows who added it"></label>
-      </div>
-      <datalist id="city-options"></datalist>
-      <p class="form-error" id="add-error" role="alert"></p>
-      <footer class="sheet__foot">
-        <button type="button" class="btn btn--ghost" data-close>Cancel</button>
-        <button type="submit" class="btn btn--primary">Add to list</button>
-      </footer>
-    </form>
-  </dialog>
+  <script>
+    /*
+     * THE LIST. To change it, edit this array: the order here is the ranking.
+     * price and was are in dollars ("was" is the original asking price, or null).
+     */
+    const HOMES = [
+      {
+        address: "41 Bluejack Court", town: "Wendell", price: 360000, was: 576000,
+        beds: 4, baths: 3, sqft: 2680, built: 2021, safety: "A+",
+        why: "The most house for the money: big home on 1.27 acres at the end of a quiet cul-de-sac, fully fenced, and no city taxes. The price has come down a lot.",
+        watch: "A road (Covered Bridge Rd) runs behind the house, so check how noisy it is.",
+        deadline: "Offers due by Monday, Nov 16",
+        redfin: "https://www.redfin.com/NC/Wendell/41-Bluejack-Ct-27591/home/176180658",
+        photo: "https://ssl.cdn-redfin.com/photo/102/mbpaddedwide/497/genMid.10180497_7.jpg",
+      },
+      {
+        address: "117 Cinnabar Street", town: "Clayton", price: 364900, was: 405000,
+        beds: 4, baths: 2.5, sqft: 2223, built: 2026, safety: "A+",
+        why: "Brand-new home on a corner lot, next to a top-rated elementary school (Riverwood, 10 out of 10). The builder has already lowered the price.",
+        watch: "Ask what the HOA includes, such as the golf club.",
+        redfin: "https://www.redfin.com/NC/Clayton/117-Cinnabar-ST-27527/home/201006984",
+        photo: "https://ssl.cdn-redfin.com/photo/102/mbpaddedwide/369/genMid.10155369_5.jpg",
+      },
+      {
+        address: "399 Florence Drive", town: "Clayton", price: 399000, was: 412000,
+        beds: 5, baths: 3, sqft: 2815, built: 2010, safety: "A+",
+        why: "The most room on the list, with 5 bedrooms. It's on a quiet cul-de-sac with trees in the back yard.",
+        watch: "Near the top of the budget, and it's an older home in the neighborhood.",
+        redfin: "https://www.redfin.com/NC/Clayton/399-Florence-Dr-27527/home/43745747",
+        photo: "https://ssl.cdn-redfin.com/photo/102/mbpaddedwide/201/genMid.10193201_2.jpg",
+      },
+      {
+        address: "944 Walker Ridge Way", town: "Willow Spring", price: 379990, was: 403000,
+        beds: 4, baths: 2.5, sqft: 2423, built: 2026, safety: "A+",
+        why: "Brand-new home with nice landscaping and a private back yard. It has a basement for storage or future rooms.",
+        watch: "The basement is unfinished.",
+        redfin: "https://www.redfin.com/NC/Willow-Spring/944-Walker-Ridge-Way-27592/home/200202712",
+        photo: "https://ssl.cdn-redfin.com/photo/102/mbpaddedwide/420/genMid.10199420_0.jpg",
+      },
+      {
+        address: "479 Curling Creek Drive", town: "Clayton", price: 385000, was: 400000,
+        beds: 5, baths: 3.5, sqft: 2399, built: 2023, safety: "A+",
+        why: "Almost new, with a bedroom and full bathroom on the first floor. It backs up to private woods, with a playground just up the street.",
+        watch: "HOA is $82 a month.",
+        redfin: "https://www.redfin.com/NC/Clayton/479-Curling-Creek-Dr-27527/home/187212408",
+        photo: "https://ssl.cdn-redfin.com/photo/102/mbpaddedwide/225/genMid.10193225_6.jpg",
+      },
+      {
+        address: "273 Florence Drive", town: "Clayton", price: 325000, was: 365000,
+        beds: 4, baths: 2.5, sqft: 2428, built: 2009, safety: "A+",
+        why: "The lowest price on the list for a big 4-bedroom home, with trees in the back yard. The price has dropped $40,000.",
+        watch: "It used to be a rental, so the kitchen cabinets look worn. Plan for some updates.",
+        redfin: "https://www.redfin.com/NC/Clayton/273-Florence-Dr-27527/home/43746700",
+        photo: "https://ssl.cdn-redfin.com/photo/102/mbpaddedwide/735/genMid.10171735_0.jpg",
+      },
+      {
+        address: "909 Walker Ridge Way", town: "Willow Spring", price: 404990, was: null,
+        beds: 4, baths: 2.5, sqft: 2718, built: 2026, safety: "A+",
+        why: "The biggest new home on the list, on the same street as #4.",
+        watch: "The highest price here, and the seller hasn't lowered it since February.",
+        redfin: "https://www.redfin.com/NC/Willow-Spring/909-Walker-Ridge-Way-27592/home/200202716",
+        photo: "https://ssl.cdn-redfin.com/photo/102/mbpaddedwide/765/genMid.10191765_0.jpg",
+      },
+      {
+        address: "113 Cinnabar Street", town: "Clayton", price: 374900, was: 410000,
+        beds: 4, baths: 2.5, sqft: 2190, built: 2026, safety: "A+",
+        why: "Brand-new home on a corner lot, a few doors from #2, with the same top-rated schools.",
+        watch: "A little smaller than #2 and costs about $10,000 more.",
+        redfin: "https://www.redfin.com/NC/Clayton/113-Cinnabar-ST-27520/home/201102776",
+        photo: "https://ssl.cdn-redfin.com/photo/102/mbpaddedwide/139/genMid.10157139_A.jpg",
+      },
+      {
+        address: "112 Copenhaver Drive", town: "Clayton", price: 325000, was: null,
+        beds: 3, baths: 2.5, sqft: 1939, built: 2018, safety: "A",
+        why: "One of the two lowest prices, for a fairly new home in a well-kept neighborhood.",
+        watch: "Only 3 bedrooms, and the smallest home on the list.",
+        redfin: "https://www.redfin.com/NC/Clayton/112-W-Copenhaver-Dr-27527/home/160449278",
+        photo: "https://ssl.cdn-redfin.com/photo/102/mbpaddedwide/748/genMid.10187748_1.jpg",
+      },
+      {
+        address: "17 Wild Sage Circle", town: "Angier", price: 377700, was: null,
+        beds: 3, baths: 2.5, sqft: 2252, built: 2022, safety: "A+",
+        why: "Newer home on a nice corner lot, with room to fence in the yard.",
+        watch: "Only 3 bedrooms, and Angier is a bit farther out.",
+        redfin: "https://www.redfin.com/NC/Angier/17-Wild-Sage-Cir-27501/home/163303109",
+        photo: "https://ssl.cdn-redfin.com/photo/102/mbpaddedwide/667/genMid.10195667_3.jpg",
+      },
+    ];
 
-  <!-- Confirm remove -->
-  <dialog id="confirm-dialog" class="sheet sheet--small" aria-labelledby="confirm-title">
-    <form method="dialog">
-      <h2 id="confirm-title">Remove this home?</h2>
-      <p id="confirm-text"></p>
-      <footer class="sheet__foot">
-        <button value="cancel" class="btn btn--ghost">Keep it</button>
-        <button value="ok" class="btn btn--danger">Remove</button>
-      </footer>
-    </form>
-  </dialog>
+    const money = (n) => "$" + n.toLocaleString("en-US");
+    const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+    const mapLink = (h) => "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(`${h.address}, ${h.town}, NC`);
 
-  <!-- Passcode (live mode only) -->
-  <dialog id="pass-dialog" class="sheet sheet--small" aria-labelledby="pass-title">
-    <form id="pass-form">
-      <h2 id="pass-title">Enter the family passcode</h2>
-      <p>Changes save to the shared list, so adding and removing homes needs the passcode Rachel shared with you.</p>
-      <label>Passcode<input id="pass-input" type="password" autocomplete="current-password" required></label>
-      <p class="form-error" id="pass-error" role="alert"></p>
-      <footer class="sheet__foot">
-        <button type="button" class="btn btn--ghost" data-close>Cancel</button>
-        <button type="submit" class="btn btn--primary">Unlock</button>
-      </footer>
-    </form>
-  </dialog>
-
-  <div class="toasts" id="toasts" aria-live="polite"></div>
-
-  <script type="module" src="js/app.js"></script>
+    document.getElementById("rows").innerHTML = HOMES.map((h, i) => {
+      const drop = h.was && h.was > h.price ? `<span class="drop">$${Math.round((h.was - h.price) / 1000)}K lower than before</span>` : "";
+      return `
+      <tr class="${i === 0 ? "top" : ""}">
+        <td class="rank"><b>${i + 1}</b>${i === 0 ? '<span class="badge">★ Top choice</span>' : ""}</td>
+        <td class="photo"><img src="${esc(h.photo)}" alt="Front of ${esc(h.address)}" loading="${i < 3 ? "eager" : "lazy"}"></td>
+        <td class="home" data-label="Home"><strong>${esc(h.address)}</strong><span>${esc(h.town)}, NC</span></td>
+        <td class="price num" data-label="Price"><strong>${money(h.price)}</strong>${drop}</td>
+        <td class="num size" data-label="Size">${h.beds} bed · ${h.baths} bath<br>${h.sqft.toLocaleString("en-US")} sq ft<br><span>Built ${h.built}</span></td>
+        <td class="safety" data-label="Safety"><b class="${h.safety.startsWith("A") ? "" : "mid"}">${esc(h.safety)}</b></td>
+        <td class="why" data-label="Why we like it">
+          <p>${esc(h.why)}</p>
+          ${h.watch ? `<p class="watch">${esc(h.watch)}</p>` : ""}
+          ${h.deadline ? `<span class="deadline">${esc(h.deadline)}</span>` : ""}
+        </td>
+        <td class="links">
+          <a class="btn" href="${esc(h.redfin)}" target="_blank" rel="noopener">See photos</a>
+          <a class="btn light" href="${esc(mapLink(h))}" target="_blank" rel="noopener">Map</a>
+        </td>
+      </tr>`;
+    }).join("");
+  </script>
+  <style>.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}</style>
 </body>
 </html>

@@ -16,7 +16,7 @@
 
 const SHEET_NAME = "Homes";
 // Where setup() downloads the starter list from (the same file the site uses).
-const SEED_URL = "https://raw.githubusercontent.com/aminkhazri/house-hunt/main/data/homes.json";
+const SEED_URL = "https://raw.githubusercontent.com/aminkhazri/house-hunt/main/explorer/data/homes.json";
 const COLUMNS = [
   "id", "address", "city", "zip", "county", "neighborhood", "price", "originalPrice",
   "status", "mls", "daysOnMarket", "mortgage", "safety", "yearBuilt", "sqft", "beds",
