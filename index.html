@@ -166,14 +166,15 @@
     .removed summary { cursor: pointer; font-weight: 800; }
     .removed ul { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 10px; }
     .removed li { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
+    .removed .reason { color: var(--muted); }
     .removed .btn { display: inline-block; margin: 0; padding: 8px 14px; cursor: pointer; font-family: inherit; font-size: 1rem; }
 
-    dialog { border: 0; border-radius: 20px; padding: 0; width: min(480px, 100% - 24px); box-shadow: 0 20px 60px rgb(0 0 0 / .25); color: var(--ink); }
+    dialog { border: 0; border-radius: 20px; padding: 0; width: min(480px, 100% - 24px); max-height: 92dvh; overflow: auto; box-shadow: 0 20px 60px rgb(0 0 0 / .25); color: var(--ink); }
     dialog::backdrop { background: rgb(15 30 50 / .5); }
     dialog form { padding: 24px; display: grid; gap: 12px; }
     dialog h2 { margin: 0; font-size: 1.5rem; font-weight: 900; }
     dialog p { margin: 0; }
-    dialog img { width: 100%; height: 200px; object-fit: cover; border-radius: 12px; }
+    dialog img { width: 100%; height: 140px; object-fit: cover; border-radius: 12px; }
     dialog input { font: inherit; font-size: 1.3rem; padding: 12px 14px; border: 2px solid var(--line); border-radius: 12px; }
     .dialog-buttons { display: grid; gap: 10px; margin-top: 6px; }
     .dialog-buttons .btn { margin: 0; font-size: 1.15rem; padding: 14px; cursor: pointer; font-family: inherit; }
@@ -264,13 +265,18 @@
   </main>
 
   <dialog id="confirm" aria-labelledby="confirm-title">
-    <form method="dialog">
+    <form id="confirm-form">
       <img id="confirm-photo" alt="">
       <h2 id="confirm-title">Remove this home?</h2>
       <p id="confirm-text"></p>
+      <label for="remove-reason">Why are we removing it?</label>
+      <textarea id="remove-reason" rows="3" placeholder="Too far from town, the back yard is too small…"></textarea>
+      <label for="remove-pass">Family passcode</label>
+      <input id="remove-pass" type="password" autocomplete="off">
+      <p class="error" id="remove-error" role="alert"></p>
       <div class="dialog-buttons">
-        <button value="ok" class="btn danger">Yes, remove it</button>
-        <button value="cancel" class="btn light">No, keep it</button>
+        <button type="submit" class="btn danger" id="remove-go">Yes, remove it</button>
+        <button type="button" class="btn light" id="remove-cancel">No, keep it</button>
       </div>
     </form>
   </dialog>
@@ -289,6 +295,8 @@
         <textarea id="add-why" rows="3" placeholder="Big back yard, close to the grandkids…"></textarea>
         <label for="add-name">Your name</label>
         <input id="add-name" type="text" autocomplete="given-name" placeholder="Rachel">
+        <label for="add-pass">Family passcode</label>
+        <input id="add-pass" type="password" autocomplete="off">
       </div>
       <p class="error" id="add-error" role="alert"></p>
       <div class="dialog-buttons">
@@ -301,7 +309,7 @@
   <dialog id="passcode" aria-labelledby="pass-title">
     <form id="pass-form">
       <h2 id="pass-title">Family passcode</h2>
-      <p>To change our list, type the family passcode. Amin can tell you what it is. You'll only need to do this once on this device.</p>
+      <p>To change our list, type the family passcode. Amin can tell you what it is.</p>
       <label for="pass-input" class="sr-only">Passcode</label>
       <input id="pass-input" type="password" autocomplete="current-password" required>
       <p class="error" id="pass-error" role="alert"></p>
@@ -327,7 +335,12 @@
      * the Sheet, so it disappears from this page, the Sheet's list and Excel.
      */
     const API = "https://script.google.com/macros/s/AKfycbxXkpTDH4GwIN1_SjLc3I_mfUkoZy30IMO069d4lkhVtEiCmKLiGbdsNgJvVpDmaQtw/exec";
-    const PASS_KEY = "homehunt.passcode";
+    // Remove and Add always ask for the passcode. Moving homes, Undo and "Bring it back"
+    // reuse one typed in the last few minutes, so they don't nag right after you typed it.
+    // Nothing is saved on the device: close the page and it's forgotten.
+    const PASS_MINUTES = 5;
+    let recent = { pass: "", at: 0 };
+    const recentPass = () => (Date.now() - recent.at < PASS_MINUTES * 60000 ? recent.pass : "");
 
     let homes = [];     // every home from the Sheet
     let pendingUndo = null;
@@ -342,6 +355,7 @@
       set: (k, v) => { try { localStorage.setItem(k, v); } catch {} },
       del: (k) => { try { localStorage.removeItem(k); } catch {} },
     };
+    store.del("homehunt.passcode"); // older versions remembered the passcode on the device
 
     /** "$405K 3/26" -> 405000 (the original asking price), otherwise null. */
     function originalPrice(text) {
@@ -400,7 +414,8 @@
       $("removed").hidden = gone.length === 0;
       $("removed-count").textContent = gone.length;
       $("removed-list").innerHTML = gone.map((h) => `
-        <li><span><b>${esc(h.address)}</b>, ${esc(h.city)} · ${h.price ? money(h.price) : ""}</span>
+        <li><span><b>${esc(h.address)}</b>, ${esc(h.city)} · ${h.price ? money(h.price) : ""}
+          ${h.removedReason ? `<br><span class="reason">Why: ${esc(h.removedReason)}</span>` : ""}</span>
         <button type="button" class="btn light" data-restore="${esc(h.id)}">Bring it back</button></li>`).join("");
     }
 
@@ -435,8 +450,8 @@
 
     /** Send a change to the Sheet. Asks for the passcode the first time, and again if it was wrong.
      *  Returns the server's answer, or false if the person cancelled. */
-    async function save(action, id, extra = {}) {
-      let passcode = store.get(PASS_KEY) || await askPasscode();
+    async function save(action, id, extra = {}, typed = "") {
+      let passcode = typed || recentPass() || await askPasscode();
       while (passcode) {
         const res = await fetch(API, {
           method: "POST",
@@ -444,15 +459,17 @@
           body: JSON.stringify({ action, id, passcode, ...extra }),
         });
         const data = await res.json();
-        if (data.ok) { store.set(PASS_KEY, passcode); return data; }
+        if (data.ok) { recent = { pass: passcode, at: Date.now() }; return data; }
         if (data.error !== "bad_passcode") throw new Error(data.error || "Something went wrong.");
-        store.del(PASS_KEY);
+        recent = { pass: "", at: 0 };
+        if (typed) throw new Error("bad_passcode"); // the dialog shows its own message
         passcode = await askPasscode("That passcode didn't work. Please try again.");
       }
       return false; // cancelled
     }
 
     /* ---------- Remove, undo, bring back ---------- */
+    /** Show the Remove box. Resolves true once the home is removed in the Sheet, false if they kept it. */
     function confirmRemove(h) {
       const dlg = $("confirm");
       $("confirm-title").textContent = `Remove ${h.address}?`;
@@ -460,9 +477,36 @@
       const photo = safeUrl(h.photoUrl);
       $("confirm-photo").hidden = !photo;
       if (photo) { $("confirm-photo").src = photo; $("confirm-photo").alt = `Front of ${h.address}`; }
-      dlg.returnValue = "";
+      $("remove-reason").value = "";
+      $("remove-pass").value = "";
+      $("remove-error").textContent = "";
       dlg.showModal();
-      return new Promise((resolve) => dlg.addEventListener("close", () => resolve(dlg.returnValue === "ok"), { once: true }));
+      $("remove-reason").focus();
+      return new Promise((resolve) => {
+        const finish = (result) => { $("confirm-form").onsubmit = null; $("remove-cancel").onclick = null; dlg.oncancel = null; dlg.close(); resolve(result); };
+        $("remove-cancel").onclick = () => finish(false);
+        dlg.oncancel = (e) => { e.preventDefault(); finish(false); };
+        $("confirm-form").onsubmit = async (e) => {
+          e.preventDefault();
+          const pass = $("remove-pass").value.trim();
+          if (!pass) { $("remove-error").textContent = "Please type the family passcode."; $("remove-pass").focus(); return; }
+          const go = $("remove-go");
+          go.disabled = true; go.textContent = "Removing…";
+          try {
+            const reason = $("remove-reason").value.trim();
+            await save("remove", h.id, { reason }, pass);
+            h.removedReason = reason;
+            finish(true);
+          } catch (err) {
+            $("remove-error").textContent = err.message === "bad_passcode"
+              ? "That passcode didn't work. Please try again."
+              : "Sorry, that didn't save. Please try again in a minute.";
+            if (err.message === "bad_passcode") { $("remove-pass").value = ""; $("remove-pass").focus(); }
+          } finally {
+            go.disabled = false; go.textContent = "Yes, remove it";
+          }
+        };
+      });
     }
 
     function showToast(text, onUndo) {
@@ -477,16 +521,11 @@
     async function removeHome(id) {
       const h = homes.find((x) => x.id === id);
       if (!h || !(await confirmRemove(h))) return;
-      try {
-        if (!(await save("remove", id))) return;
-        h.removed = true;
-        const row = document.querySelector(`tr[data-id="${CSS.escape(id)}"]`);
-        row?.classList.add("leaving");
-        setTimeout(render, 400);
-        showToast(`${h.address} was removed.`, () => restoreHome(id));
-      } catch (err) {
-        showToast("Sorry, that didn't save. Please try again in a minute.");
-      }
+      h.removed = true;
+      const row = document.querySelector(`tr[data-id="${CSS.escape(id)}"]`);
+      row?.classList.add("leaving");
+      setTimeout(render, 400);
+      showToast(`${h.address} was removed.`, () => restoreHome(id));
     }
 
     async function restoreHome(id) {
@@ -495,6 +534,7 @@
       try {
         if (!(await save("restore", id))) return;
         h.removed = false;
+        h.removedReason = "";
         render();
         showToast(`${h.address} is back on our list.`);
       } catch (err) {
@@ -673,7 +713,17 @@
           go.textContent = "Adding…";
           const name = $("add-name").value.trim();
           if (name) store.set("homehunt.name", name);
-          const ok = await save("addRedfin", null, { url: found.redfinUrl, why: $("add-why").value.trim(), addedBy: name });
+          const pass = $("add-pass").value.trim();
+          if (!pass) { go.textContent = "Add to our list"; $("add-error").textContent = "Please type the family passcode."; $("add-pass").focus(); return; }
+          let ok;
+          try {
+            ok = await save("addRedfin", null, { url: found.redfinUrl, why: $("add-why").value.trim(), addedBy: name }, pass);
+          } catch (err) {
+            if (err.message !== "bad_passcode") throw err;
+            $("add-pass").value = "";
+            $("add-pass").focus();
+            throw new Error("That passcode didn't work. Please try again.");
+          }
           if (!ok) { go.textContent = "Add to our list"; return; }
           $("add").close();
           await load();

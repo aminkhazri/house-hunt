@@ -8,7 +8,7 @@
  *   GET  ?action=lookup&url=REDFIN_URL      -> { ok, home } preview from a Redfin link
  *   POST { action: "add",     home, passcode }    -> { ok, home }
  *   POST { action: "addRedfin", url, why, addedBy, passcode } -> { ok, home }
- *   POST { action: "remove",  id,   passcode }    -> { ok }
+ *   POST { action: "remove",  id, reason, passcode } -> { ok }   (reason is saved in removedReason)
  *   POST { action: "move", id, direction: "up"|"down", passcode } -> { ok, order: [ids] }
  *   POST { action: "moveTo", id, position: 1..n, passcode }       -> { ok, order: [ids] }
  *   POST { action: "restore", id,   passcode }    -> { ok }
@@ -31,6 +31,7 @@ const COLUMNS = [
   "removed", "removedAt",
   // Family page columns: rank 1 = top choice; blank rank = not on the top list.
   "rank", "why", "watch", "deadline",
+  "removedReason",
 ];
 const NUMBER_FIELDS = ["price", "mortgage", "yearBuilt", "sqft", "beds", "baths", "hoa",
   "elementaryScore", "middleScore", "highScore", "rank"];
@@ -107,7 +108,7 @@ function doPost(e) {
       case "addRedfin": return json_({ ok: true, home: addFromRedfin_(body) });
       case "move": return json_({ ok: true, order: moveHome_(body.id, body.direction) });
       case "moveTo": return json_({ ok: true, order: moveHome_(body.id, null, Number(body.position)) });
-      case "remove": setRemoved_(body.id, true); return json_({ ok: true });
+      case "remove": setRemoved_(body.id, true, body.reason); return json_({ ok: true });
       case "restore": setRemoved_(body.id, false); return json_({ ok: true });
       default: return json_({ ok: false, error: "Unknown action." });
     }
@@ -183,7 +184,7 @@ function addHome_(input) {
   return home;
 }
 
-function setRemoved_(id, removed) {
+function setRemoved_(id, removed, reason) {
   const sheet = sheet_();
   const ids = sheet.getRange(2, 1, Math.max(sheet.getLastRow() - 1, 1), 1).getValues().flat();
   const index = ids.indexOf(String(id));
@@ -191,6 +192,7 @@ function setRemoved_(id, removed) {
   const row = index + 2;
   sheet.getRange(row, col_(sheet, "removed")).setValue(removed);
   sheet.getRange(row, col_(sheet, "removedAt")).setValue(removed ? new Date().toISOString() : "");
+  sheet.getRange(row, col_(sheet, "removedReason")).setValue(removed ? String(reason || "").trim().slice(0, 500) : "");
 }
 
 /* ---------- Reorder ---------- */
@@ -369,7 +371,7 @@ function csv_(homes, includeRemoved) {
     .sort((a, b) => (a.rank || 999) - (b.rank || 999) || (a.price || 0) - (b.price || 0));
   const head = ["Rank", "Address", "Town", "Zip", "Price", "Beds", "Baths", "Sq Ft", "Year Built",
     "Safety", "Status", "Why we like it", "Keep in mind", "Deadline", "HOA $/mo",
-    "Elementary", "Middle", "High", "Redfin", "On our list"];
+    "Elementary", "Middle", "High", "Redfin", "On our list", "Why we removed it"];
   const cell = (v) => {
     const s = v == null ? "" : String(v);
     return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
@@ -377,7 +379,7 @@ function csv_(homes, includeRemoved) {
   const rows = list.map((h) => [
     h.rank || "", h.address, h.city, h.zip, h.price, h.beds, h.baths, h.sqft, h.yearBuilt,
     h.safety, h.status, h.why, h.watch, h.deadline, h.hoa,
-    h.elementary, h.middle, h.high, h.redfinUrl, h.removed ? "Removed" : "Yes",
+    h.elementary, h.middle, h.high, h.redfinUrl, h.removed ? "Removed" : "Yes", h.removed ? h.removedReason : "",
   ].map(cell).join(","));
   return ContentService.createTextOutput([head.join(",")].concat(rows).join("\n"))
     .setMimeType(ContentService.MimeType.CSV);

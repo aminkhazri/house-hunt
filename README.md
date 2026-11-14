@@ -10,7 +10,7 @@ The page reads the **Homes** tab of our Google Sheet through the Apps Script web
 
 | You want to… | Do this |
 |---|---|
-| Remove a home | Tap **Remove** on the page (asks for the family passcode once per device). The Sheet's `removed` cell becomes `TRUE`. **Undo** or "Bring it back" reverses it. |
+| Remove a home | Tap **Remove**, say why (saved in the Sheet's `removedReason` column), and type the family passcode. The Sheet's `removed` cell becomes `TRUE`. **Undo** or "Bring it back" reverses it. |
 | Change the order | In **Top 5 Homes**, **press and hold** a home, then **drag** it to a new spot (keyboard: focus a card and use the arrow keys). Or change the `rank` numbers in the Sheet. Every move renumbers the list 1, 2, 3… |
 | Add a home | Tap **＋ Add a home from Redfin**, paste the home's Redfin link, check the preview, and tap **Add to our list**. It goes to the bottom of the list. (Or add a row in the Sheet and give it a `rank`.) |
 | Change the notes | Edit `why`, `watch` or `deadline` in the Sheet. |
@@ -32,6 +32,10 @@ The web app also serves the current list as CSV at `…/exec?action=csv` (add `&
 3. Tick **Refresh every 5 minutes** and **Refresh data when opening the file**, then click **OK**.
 
 Every add or remove in the Sheet or on the page then shows up in Excel automatically. Excel *reads* the list; changes happen on the page or in the Sheet.
+
+## The family passcode
+
+Every change goes through the Apps Script, which checks the passcode on the server. **Remove** and **Add** ask for it every time. Dragging in the Top 5, **Undo** and **Bring it back** reuse a passcode typed in the last 5 minutes, so they don't nag right after you typed it. Nothing is saved on the device: close the page and it's forgotten.
 
 ## How the top 10 were picked
 
