@@ -110,6 +110,8 @@
     .num { white-space: nowrap; font-variant-numeric: tabular-nums; }
     .price strong { font-size: 1.05rem; font-weight: 900; }
     .drop { display: block; color: var(--leaf); font-weight: 800; font-size: .8rem; }
+    .rise { display: block; color: #b45309; font-weight: 800; font-size: .8rem; }
+    .home .status { display: inline-block; margin-top: 4px; background: #fdecc8; color: #7a4a00; font-weight: 800; font-size: .75rem; padding: 2px 8px; border-radius: 8px; }
 
     .safety b { display: inline-block; min-width: 46px; text-align: center; padding: 2px 8px; border-radius: 8px; background: var(--leaf); color: #fff; font-weight: 900; }
     .safety b.mid { background: #c98a00; }
@@ -535,7 +537,7 @@
 
   <footer class="wrap">
     <p><b>How we picked:</b> we only included homes that were still for sale on Redfin on November 14. Then we ranked them by neighborhood safety grade first, then by value (how much house you get for the price), the price itself, school ratings, size and age, and our own notes from looking at each listing.</p>
-    <p>Safety grades come from CrimeGrade.org for each home's zip code (A+ is safest; the safety score runs from 0 to 1000) and are checked again every week. Photos and prices come from Redfin. Our list is kept in a Google Sheet, so a home removed here comes off the Sheet too.</p>
+    <p>Safety grades come from CrimeGrade.org for each home's zip code (A+ is safest; the safety score runs from 0 to 1000) and are checked again every week. Photos and prices come from Redfin, and prices are checked again every morning.<span id="price-note"></span> Our list is kept in a Google Sheet, so a home removed here comes off the Sheet too.</p>
   </footer>
 
   <script>
@@ -595,7 +597,11 @@
     function rowHtml(h, i, all) {
       const total = all.length;
       const was = originalPrice(h.originalPrice);
-      const drop = was && was > h.price ? `<span class="drop">$${Math.round((was - h.price) / 1000)}K lower than before</span>` : "";
+      const drop = was && was > h.price ? `<span class="drop">$${Math.round((was - h.price) / 1000)}K below the original price</span>` : "";
+      // Latest change found by the daily Redfin check, e.g. "▼ Dropped $5,000 · Nov 17"
+      const diff = h.lastPrice && h.price ? h.price - h.lastPrice : 0;
+      const change = diff ? `<span class="${diff < 0 ? "drop" : "rise"}">${diff < 0 ? "▼ Dropped" : "▲ Went up"} ${money(Math.abs(diff))}${h.priceChangedAt ? " · " + shortDate(h.priceChangedAt) : ""}</span>` : "";
+      const tag = { Pending: "Sale pending", Sold: "Sold", "Off market": "Off the market" }[h.status] || "";
       const photo = safeUrl(h.photoUrl);
       const sf = safetyOf(h);
       const grade = String(sf.grade || "?");
@@ -605,8 +611,8 @@
         <td class="rank grab"><b>${i + 1}</b>${i === 0 ? '<span class="badge">★ Top choice</span>' : ""}
           <span class="arrows"><button type="button" class="arrow" data-step="-1" data-id="${esc(h.id)}" aria-label="Move ${esc(h.address)} up"${i === 0 ? " disabled" : ""}>▲</button><button type="button" class="arrow" data-step="1" data-id="${esc(h.id)}" aria-label="Move ${esc(h.address)} down"${i === total - 1 ? " disabled" : ""}>▼</button></span></td>
         <td class="photo grab">${photo ? `<img src="${esc(photo)}" alt="Front of ${esc(h.address)}" loading="${i < 3 ? "eager" : "lazy"}">` : ""}</td>
-        <td class="home grab" data-label="Home"><strong>${esc(h.address)}</strong><span>${esc(h.city)}, NC</span></td>
-        <td class="price num" data-label="Price"><strong>${h.price ? money(h.price) : "—"}</strong>${drop}</td>
+        <td class="home grab" data-label="Home"><strong>${esc(h.address)}</strong><span>${esc(h.city)}, NC</span>${tag ? `<span class="status">${tag}</span>` : ""}</td>
+        <td class="price num" data-label="Price"><strong>${h.price ? money(h.price) : "—"}</strong>${change}${drop}</td>
         <td class="num size" data-label="Size"><i>${h.beds ?? "?"} bed · ${h.baths ?? "?"} bath</i>${h.sqft ? `<i>${Number(h.sqft).toLocaleString("en-US")} sq ft</i>` : ""}${h.yearBuilt ? `<i class="yr">Built ${h.yearBuilt}</i>` : ""}</td>
         <td class="safety" data-label="Safety">
           <b class="${grade.startsWith("A") ? "" : "mid"}">${esc(grade)}</b>
@@ -702,6 +708,7 @@
       homes = data.homes;
       comments = data.comments || [];
       safetyByZip = data.safety || {};
+      $("price-note").textContent = data.pricesChecked ? ` Last price check: ${shortDate(data.pricesChecked)}.` : "";
       shownJson = json;
       render();
     }

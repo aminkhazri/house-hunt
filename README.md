@@ -49,6 +49,16 @@ The slow part of loading is Google's Apps Script (1.5–3 seconds per request). 
 2. **Saved copy in the script**: `listJson_()` keeps the finished answer in `CacheService` for 5 minutes. Every change made through the page clears it (`clearListCache_()`), and so does editing the Sheet by hand (the `onEdit` trigger).
 3. **Smaller answer**: only homes that are or were on our ranked list are sent, along with their comments.
 
+## Daily price check
+
+Redfin has no feed we can subscribe to, so the Apps Script checks for us. `refreshPrices()` runs every morning from a **time-driven trigger** (Apps Script editor → Triggers). For each home on the page it re-reads the Redfin listing and compares it with the Sheet:
+
+- **Price changed** → the `price` cell is updated, the old price goes in `lastPrice`, the date in `priceChangedAt`, and the page shows "▼ Dropped $5,000 · Nov 17" (or "▲ Went up").
+- **Status changed** (Active / Pending / Sold / Off market) → the `status` cell is updated and the page shows a tag such as "Sale pending".
+- Every change also gets a line in the **Price history** tab.
+
+Guards: a price is only trusted while the home is for sale, a new price below half or above double the old one is ignored, and a page that doesn't look like a listing is skipped rather than read as "off the market".
+
 ## Safety grades
 
 Each home's safety comes from **CrimeGrade's page for its zip code** (`https://crimegrade.org/safest-places-in-ZIP/`). The Apps Script reads that page, pulls out the overall grade, the safety score (0–1000, higher is safer), the "safer than X% of US neighborhoods" figure and the violent/property grades, and keeps them in Script Properties (`SAFETY_<zip>`) for a week before checking again. The page shows the grade, the score, how the area ranks against the other areas on our list, and a **CrimeGrade ↗** link. If CrimeGrade can't be reached, the page falls back to the grade in the Sheet's `safety` column.

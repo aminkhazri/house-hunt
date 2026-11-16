@@ -35,9 +35,11 @@ const COLUMNS = [
   // Family page columns: rank 1 = top choice; blank rank = not on the top list.
   "rank", "why", "watch", "deadline",
   "removedReason",
+  // Filled in by the daily Redfin check: the price before the latest change, and when it changed.
+  "lastPrice", "priceChangedAt",
 ];
 const NUMBER_FIELDS = ["price", "mortgage", "yearBuilt", "sqft", "beds", "baths", "hoa",
-  "elementaryScore", "middleScore", "highScore", "rank"];
+  "elementaryScore", "middleScore", "highScore", "rank", "lastPrice"];
 
 /* ---------- One-time setup ---------- */
 
@@ -148,6 +150,7 @@ function listJson_() {
     homes: homes,
     comments: readComments_().filter((c) => ids.indexOf(c.homeId) >= 0),
     safety: safetyFor_(homes.map((h) => h.zip)),
+    pricesChecked: PropertiesService.getScriptProperties().getProperty("PRICES_CHECKED") || "",
   });
   if (json.length < 90000) cache.put(LIST_CACHE_KEY, json, LIST_CACHE_SECONDS); // cache values max out at 100 KB
   return json;
@@ -439,7 +442,13 @@ function redfinLookup_(rawUrl) {
   const street = addr ? addr[1].trim() : slugParts.join(" ");
   const city = addr ? addr[2].trim() : path[4].replace(/-/g, " ");
   const year = html.match(/\\?"yearBuilt\\?"\s*:\s*(\d{4})/);
-  const status = (desc.match(/^([^:]+):/) || [])[1] || "";
+  // Status: the summary starts "For Sale:" or "Sold:" (nothing = off the market), and the
+  // page's own data says whether a for-sale home is already pending.
+  const prefix = (desc.match(/^([A-Za-z ]+):/) || [])[1] || "";
+  const listing = (html.match(/"listingStatus"\s*:\s*"([a-z_ ]+)"/i) || [])[1] || "";
+  const status = /^sold/i.test(prefix) ? "Sold"
+    : !/sale/i.test(prefix) ? "Off market"
+    : /pending|contingent/i.test(listing) ? "Pending" : "Active";
 
   return {
     address: street, city: city, zip: zip,
@@ -449,7 +458,7 @@ function redfinLookup_(rawUrl) {
     sqft: num(/([\d,]+)\s*sq\.?\s*ft/i),
     yearBuilt: year ? Number(year[1]) : null,
     mls: (desc.match(/MLS#\s*([\w-]+)/) || [])[1] || "",
-    status: /sale/i.test(status) ? "Active" : status,
+    status: status,
     redfinUrl: url,
     photoUrl: /^https:\/\//.test(meta("og:image")) ? meta("og:image") : "",
   };
@@ -661,4 +670,89 @@ function setupPageTab() {
   const url = ss.getUrl().replace(/\/edit.*$/, "") + "/edit#gid=" + tab.getSheetId();
   Logger.log("On our page tab ready: %s", url);
   return url;
+}
+
+/* ---------- Daily Redfin check: prices and status ---------- */
+
+const HISTORY_TAB = "Price history";
+
+/**
+ * Runs once a day from a time-driven trigger (Triggers, in the left menu of the editor).
+ * For every home on our page it re-reads the Redfin listing and, if the price or the
+ * status (Active / Pending / Sold / Off market) changed, updates the Homes tab and adds
+ * a line to the "Price history" tab. Safe to run by hand any time.
+ */
+function refreshPrices() {
+  // 1) Read the listings first, without holding the lock (this is the slow part).
+  const fresh = {};
+  let failed = 0;
+  readHomes_().filter((h) => h.rank && !h.removed && REDFIN_URL.test(h.redfinUrl)).forEach((h) => {
+    try {
+      const info = redfinLookup_(h.redfinUrl);
+      // No beds in the summary means we got something other than the listing (a "please
+      // verify" page, say). Skip it, so a bad read can never mark a home as off the market.
+      if (info.beds === null) failed++; else fresh[h.id] = info;
+    } catch (e) { failed++; }
+    Utilities.sleep(400); // be polite to Redfin
+  });
+
+  // 2) Then take the lock (so we can't collide with someone using the page) and write the changes.
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  const changes = [];
+  try {
+    const sheet = sheet_();
+    const values = sheet.getDataRange().getValues();
+    const header = values[0];
+    const col = (key) => header.indexOf(key);
+    const now = new Date().toISOString();
+    for (let r = 1; r < values.length; r++) {
+      const info = fresh[String(values[r][0])];
+      if (!info) continue;
+      const set = (key, v) => sheet.getRange(r + 1, col(key) + 1).setValue(v);
+      const name = values[r][col("address")] + ", " + values[r][col("city")];
+
+      const oldStatus = String(values[r][col("status")] || "");
+      if (info.status && info.status !== oldStatus) {
+        set("status", info.status);
+        changes.push([now, name, "Status", oldStatus || "(blank)", info.status, "", info.redfinUrl]);
+      }
+
+      // Only trust the price while the home is for sale, and ignore anything that looks
+      // like a misread (less than half or more than double the price we have).
+      const oldPrice = Number(values[r][col("price")]) || 0;
+      const forSale = info.status === "Active" || info.status === "Pending";
+      const sane = info.price && (!oldPrice || (info.price > oldPrice * 0.5 && info.price < oldPrice * 2));
+      if (forSale && sane && info.price !== oldPrice) {
+        set("price", info.price);
+        if (oldPrice) { set("lastPrice", oldPrice); set("priceChangedAt", now); }
+        changes.push([now, name, "Price", oldPrice || "", info.price, oldPrice ? info.price - oldPrice : "", info.redfinUrl]);
+      }
+    }
+    if (changes.length) {
+      const log = historySheet_();
+      log.getRange(log.getLastRow() + 1, 1, changes.length, changes[0].length).setValues(changes);
+    }
+    PropertiesService.getScriptProperties().setProperty("PRICES_CHECKED", now);
+    clearListCache_(); // so the page shows the new prices right away
+  } finally {
+    lock.releaseLock();
+  }
+  Logger.log("Checked %s homes, %s changes, %s could not be read.", Object.keys(fresh).length, changes.length, failed);
+  return changes;
+}
+
+/** The "Price history" tab: one line per price or status change. Created the first time it's needed. */
+function historySheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(HISTORY_TAB);
+  if (!sheet) {
+    sheet = ss.insertSheet(HISTORY_TAB);
+    sheet.getRange(1, 1, 1, 7).setValues([["When", "Home", "What changed", "Before", "Now", "Difference", "Redfin"]])
+      .setFontWeight("bold").setBackground("#12355f").setFontColor("#ffffff");
+    sheet.setFrozenRows(1);
+    sheet.getRange("D2:F").setNumberFormat("$#,##0;-$#,##0");
+    [170, 220, 110, 100, 100, 100, 320].forEach((w, i) => sheet.setColumnWidth(i + 1, w));
+  }
+  return sheet;
 }
