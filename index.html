@@ -415,6 +415,56 @@
       header h1 { font-size: 1.9rem; }
       tbody tr.top td:first-child, tbody tr.top + tr.c-row td:first-child { box-shadow: none; }
     }
+    /* =====================================================================
+       Price changes: make a drop impossible to miss.
+       Green = dropped (good news), amber = went up. "fresh" = this week.
+       ===================================================================== */
+    .price .was { display: block; color: var(--muted); font-size: .8rem; font-weight: 600; text-decoration-thickness: 2px; }
+    .price.changed.down strong { color: #17803d; }
+    .price.changed.up strong { color: #b45309; }
+    .price.changed strong { display: block; }
+    .chg { display: block; width: fit-content; margin: 3px 0 2px; padding: 3px 9px; border-radius: 999px; font-size: .78rem; font-weight: 800; line-height: 1.25; white-space: normal; }
+    .chg small { display: block; font-size: .7rem; font-weight: 700; opacity: .85; }
+    .chg.down { background: #17803d; color: #fff; }
+    .chg.up { background: #fde8c8; color: #8a4a00; border: 1px solid #f3c98b; }
+    tbody tr.h-row td.price.changed.down { background-image: linear-gradient(#e9f8ee, #e9f8ee); }
+    .chip { display: inline-block; font-size: .72rem; font-weight: 800; padding: 1px 7px; border-radius: 999px; vertical-align: 2px; }
+    .chip.down { background: #17803d; color: #fff; }
+    .chip.up { background: #fde8c8; color: #8a4a00; }
+
+    /* The pulse: a soft green ring that grows and fades, three beats then a rest. */
+    @keyframes price-pulse {
+      0%, 60%, 100% { box-shadow: 0 0 0 0 rgb(23 128 61 / 0); transform: scale(1); }
+      10% { box-shadow: 0 0 0 0 rgb(23 128 61 / .55); transform: scale(1.06); }
+      35% { box-shadow: 0 0 0 9px rgb(23 128 61 / 0); transform: scale(1); }
+    }
+    .chg.down.fresh, .chip.down.fresh, .news.down .tagicon { animation: price-pulse 2.4s ease-out infinite; }
+
+    /* Banner under the header */
+    .price-news { display: grid; gap: 8px; margin: 18px 0 4px; }
+    .news {
+      display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; width: 100%; text-align: left;
+      font: inherit; font-size: 1rem; color: var(--ink); cursor: pointer; padding: 10px 14px; border-radius: 14px;
+      background: #e9f8ee; border: 2px solid #17803d; position: relative; overflow: hidden;
+    }
+    .news.up { background: #fff6e8; border-color: #e0a04a; }
+    .news .tagicon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: #17803d; color: #fff; font-size: .9rem; }
+    .news.up .tagicon { background: #c8791a; }
+    .news .go { font-weight: 800; color: var(--navy); white-space: nowrap; }
+    /* a light sweeps across the banner once when it appears */
+    @keyframes news-shine { from { transform: translateX(-120%) skewX(-20deg); } to { transform: translateX(520%) skewX(-20deg); } }
+    .news.down::after { content: ""; position: absolute; inset: 0 auto 0 0; width: 25%; background: linear-gradient(90deg, transparent, rgb(255 255 255 / .75), transparent); animation: news-shine 1.6s ease-out .4s 2 both; pointer-events: none; }
+    @media (prefers-reduced-motion: reduce) {
+      .chg.down.fresh, .chip.down.fresh, .news.down .tagicon, .news.down::after { animation: none; }
+      .news.down::after { display: none; }
+    }
+    @media (max-width: 1100px) {
+      tbody tr.h-row td.price.changed.down { background-image: none; }
+      .price .was { display: inline; margin-right: 6px; }
+      .price.changed strong { display: inline; }
+      .chg small { display: inline; margin-left: 6px; }
+    }
+    @media print { .price-news { display: none; } }
   </style>
 </head>
 <body>
@@ -428,6 +478,7 @@
 
   <main class="wrap">
 
+    <div class="price-news" id="price-news" hidden></div>
     <section class="overview" aria-labelledby="top5-title">
       <h2 id="top5-title">Top 5 Homes</h2>
       <p class="drag-tip">Press and hold any home, here or in the list below, then drag it up or down to change the order. You can also tap ▲ ▼.</p>
@@ -599,8 +650,8 @@
       const was = originalPrice(h.originalPrice);
       const drop = was && was - h.price >= 500 ? `<span class="drop">$${Math.round((was - h.price) / 1000)}K below the original price</span>` : "";
       // Latest change found by the daily Redfin check, e.g. "▼ Dropped $5,000 · Nov 17"
-      const diff = h.lastPrice && h.price ? h.price - h.lastPrice : 0;
-      const change = diff ? `<span class="${diff < 0 ? "drop" : "rise"}">${diff < 0 ? "▼ Dropped" : "▲ Went up"} ${money(Math.abs(diff))}${h.priceChangedAt ? " · " + shortDate(h.priceChangedAt) : ""}</span>` : "";
+      const pc = priceChange(h);
+      const change = pc ? `<span class="chg ${pc.dir}${pc.fresh ? " fresh" : ""}">${pc.dir === "down" ? "▼ Price dropped" : "▲ Price went up"} ${money(pc.amount)}<small>${pc.when}</small></span>` : "";
       const tag = { Pending: "Sale pending", Sold: "Sold", "Off market": "Off the market" }[h.status] || "";
       const photo = safeUrl(h.photoUrl);
       const sf = safetyOf(h);
@@ -612,7 +663,7 @@
           <span class="arrows"><button type="button" class="arrow" data-step="-1" data-id="${esc(h.id)}" aria-label="Move ${esc(h.address)} up"${i === 0 ? " disabled" : ""}>▲</button><button type="button" class="arrow" data-step="1" data-id="${esc(h.id)}" aria-label="Move ${esc(h.address)} down"${i === total - 1 ? " disabled" : ""}>▼</button></span></td>
         <td class="photo grab">${photo ? `<img src="${esc(photo)}" alt="Front of ${esc(h.address)}" loading="${i < 3 ? "eager" : "lazy"}">` : ""}</td>
         <td class="home grab" data-label="Home"><strong>${esc(h.address)}</strong><span>${esc(h.city)}, NC</span>${tag ? `<span class="status">${tag}</span>` : ""}</td>
-        <td class="price num" data-label="Price"><strong>${h.price ? money(h.price) : "—"}</strong>${change}${drop}</td>
+        <td class="price num${pc ? " changed " + pc.dir : ""}" data-label="Price">${pc ? `<s class="was">${money(h.lastPrice)}</s>` : ""}<strong>${h.price ? money(h.price) : "—"}</strong>${change}${drop}</td>
         <td class="num size" data-label="Size"><i>${h.beds ?? "?"} bed · ${h.baths ?? "?"} bath</i>${h.sqft ? `<i>${Number(h.sqft).toLocaleString("en-US")} sq ft</i>` : ""}${h.yearBuilt ? `<i class="yr">Built ${h.yearBuilt}</i>` : ""}</td>
         <td class="safety" data-label="Safety">
           <b class="${grade.startsWith("A") ? "" : "mid"}">${esc(grade)}</b>
@@ -645,6 +696,35 @@
         + `<button type="button" class="c-add" data-comment="${esc(h.id)}">💬 Add a comment</button>`;
     }
 
+    /**
+     * The latest price change the daily Redfin check found for a home, or null.
+     * "fresh" (changed in the last 7 days) is what makes it pulse and show in the banner.
+     */
+    const FRESH_DAYS = 7;
+    function priceChange(h) {
+      const diff = h.lastPrice && h.price ? h.price - h.lastPrice : 0;
+      if (!diff) return null;
+      const at = new Date(h.priceChangedAt);
+      return {
+        dir: diff < 0 ? "down" : "up",
+        amount: Math.abs(diff),
+        when: isNaN(at) ? "" : shortDate(h.priceChangedAt),
+        fresh: !isNaN(at) && Date.now() - at.getTime() < FRESH_DAYS * 864e5,
+      };
+    }
+
+    /** The banner at the top: one line per home whose price changed this week. Tap one to jump to it. */
+    function priceNewsHtml(list) {
+      const news = list.filter((h) => priceChange(h)?.fresh).sort((a, b) => new Date(b.priceChangedAt) - new Date(a.priceChangedAt));
+      return news.map((h) => {
+        const pc = priceChange(h);
+        return `<button type="button" class="news ${pc.dir}" data-jump="${esc(h.id)}">
+          <span class="tagicon" aria-hidden="true">${pc.dir === "down" ? "▼" : "▲"}</span>
+          <span><b>${pc.dir === "down" ? "Price drop!" : "Price went up."}</b> ${esc(h.address)} is ${pc.dir === "down" ? "down" : "up"} <b>${money(pc.amount)}</b>, now ${money(h.price)}.</span>
+          <span class="go">See it ›</span></button>`;
+      }).join("");
+    }
+
     function top5Html(h, i) {
       const photo = safeUrl(h.photoUrl);
       return `<li data-id="${esc(h.id)}"><div class="tile" tabindex="0" role="button"
@@ -652,7 +732,7 @@
         <span class="n">${i + 1}</span><span class="grip" aria-hidden="true">⋮⋮</span>
         ${photo ? `<img src="${esc(photo)}" alt="Front of ${esc(h.address)}">` : "<span></span>"}
         <strong>${esc(h.address)}</strong>
-        <span class="p">${h.price ? money(h.price) : ""}</span>
+        <span class="p">${h.price ? money(h.price) : ""}${priceChange(h) ? ` <b class="chip ${priceChange(h).dir}${priceChange(h).fresh ? " fresh" : ""}">${priceChange(h).dir === "down" ? "▼" : "▲"} ${money(priceChange(h).amount)}</b>` : ""}</span>
         <span class="t">${esc(h.city)} · ${h.beds ?? "?"} bed · Safety ${esc(safetyOf(h).grade || "?")}</span>
       </div></li>`;
     }
@@ -668,6 +748,8 @@
         return n === 1 ? "★ Safest area on our list" : `#${n} of ${ranks.count} areas on our list`;
       };
       $("rows").innerHTML = list.map(rowHtml).join("");
+      $("price-news").innerHTML = priceNewsHtml(list);
+      $("price-news").hidden = !$("price-news").innerHTML;
       $("empty").hidden = list.length > 0;
       const gone = removedList();
       document.querySelectorAll(".why .clamp").forEach((p) => { p.nextElementSibling.hidden = p.scrollHeight <= p.clientHeight + 2; });
@@ -1214,6 +1296,14 @@
     document.addEventListener("click", (e) => {
       const more = e.target.closest("[data-more]");
       if (more) { const open = more.previousElementSibling.classList.toggle("open"); more.textContent = open ? "Show less" : "Show more"; }
+      const jump = e.target.closest("[data-jump]");
+      if (jump) {
+        const row = document.getElementById("home-" + jump.dataset.jump);
+        if (row) {
+          row.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" });
+          row.classList.remove("moved"); void row.offsetWidth; row.classList.add("moved"); // replay the highlight flash
+        }
+      }
       const cm = e.target.closest("[data-comment]");
       if (cm) openComment(cm.dataset.comment);
       const rm = e.target.closest("[data-remove]");
