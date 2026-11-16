@@ -562,3 +562,103 @@ function json_(data) {
   return ContentService.createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON);
 }
+
+/* ---------- "On our page" tab: a read-only, color-coded view of the homes on the family page ---------- */
+
+const PAGE_TAB = "On our page";
+
+/**
+ * Run once from the editor. Adds an "On our page" tab that always shows exactly the homes
+ * the family page shows (ranked and not removed), in the same order. Everything on it is
+ * built from formulas that read the Homes and Comments tabs, so it updates by itself and
+ * holds no data of its own. Safe to run again: it rebuilds the tab. Logs the tab's link.
+ *
+ * Tricks used: FILTER + SORT (only our homes, in rank order), ARRAYFORMULA (one formula
+ * fills a whole column), HYPERLINK (short clickable links), COUNTIF across tabs (comment
+ * counts), and conditional formatting (stripes, a gold #1 row, color scales).
+ */
+function setupPageTab() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const homes = sheet_();
+  commentsSheet_(); // make sure the Comments tab exists for the comment counts
+  // Look columns up by header name, so the formulas keep working if columns move.
+  const letter = (name) => homes.getRange(1, col_(homes, name)).getA1Notation().replace(/\d+/g, "");
+  const r = (name) => `Homes!${letter(name)}2:${letter(name)}`;
+
+  // B..N come from one FILTER formula. L, M and N are helper columns we hide.
+  const pulled = [
+    ["Home", "address"], ["Town", "city"], ["Price", "price"], ["Beds", "beds"], ["Baths", "baths"],
+    ["Sq ft", "sqft"], ["Built", "yearBuilt"], ["Why we like it", "why"], ["Keep in mind", "watch"],
+    ["Our notes", "notes"], ["zip", "zip"], ["redfin", "redfinUrl"], ["id", "id"],
+  ];
+  const keep = `(${r("rank")}<>"")*((${r("removed")}&"")<>"TRUE")`; // has a rank AND isn't removed
+  const main = `=IFERROR(SORT(FILTER({${pulled.map(([, k]) => r(k)).join(",")}}, ${keep}), FILTER(${r("rank")}, ${keep}), TRUE), "")`;
+
+  let tab = ss.getSheetByName(PAGE_TAB);
+  if (!tab) tab = ss.insertSheet(PAGE_TAB, 0); // first tab, so it's what people see first
+  tab.getProtections(SpreadsheetApp.ProtectionType.SHEET).forEach((p) => p.remove());
+  tab.clear();
+  tab.clearConditionalFormatRules();
+  tab.showColumns(1, tab.getMaxColumns());
+
+  const headers = ["#"].concat(pulled.map(([label]) => label), ["Redfin", "Safety", "Comments"]);
+  tab.getRange(1, 1, 1, headers.length).setValues([headers]);
+  tab.getRange("A2").setFormula('=ARRAYFORMULA(IF(B2:B="", "", ROW(B2:B)-1))');   // 1, 2, 3… like the page
+  tab.getRange("B2").setFormula(main);
+  tab.getRange("O2").setFormula('=ARRAYFORMULA(IF(M2:M="", "", HYPERLINK(M2:M, "Open ↗")))');
+  tab.getRange("P2").setFormula('=ARRAYFORMULA(IF(L2:L="", "", HYPERLINK("https://crimegrade.org/safest-places-in-"&L2:L&"/", "Safety map ↗")))');
+  tab.getRange("Q2").setFormula('=ARRAYFORMULA(IF(N2:N="", "", IF(COUNTIF(Comments!B2:B, N2:N)=0, "—", "💬 "&COUNTIF(Comments!B2:B, N2:N))))');
+  tab.hideColumns(12, 3); // L, M, N: zip, Redfin address, id
+
+  // ---- Look ----
+  const NAVY = "#12355f", STRIPE = "#f2f6fb", GOLD = "#fdf2cc";
+  const all = tab.getRange("A1:Q");
+  all.setFontFamily("Nunito").setFontSize(11).setVerticalAlignment("top");
+  tab.getRange(1, 1, 1, headers.length).setFontWeight("bold").setBackground(NAVY).setFontColor("#ffffff")
+    .setVerticalAlignment("middle").setWrap(true);
+  tab.setRowHeight(1, 34);
+  tab.setFrozenRows(1);
+  tab.setFrozenColumns(2); // # and Home stay put while scrolling sideways
+  tab.getRange("A2:A").setHorizontalAlignment("center").setFontWeight("bold").setFontColor(NAVY);
+  tab.getRange("B2:B").setFontWeight("bold").setFontColor(NAVY);
+  tab.getRange("D2:D").setNumberFormat("$#,##0").setFontWeight("bold");
+  tab.getRange("E2:F").setHorizontalAlignment("center");
+  tab.getRange("G2:G").setNumberFormat("#,##0");
+  tab.getRange("H2:H").setNumberFormat("0").setHorizontalAlignment("center");
+  tab.getRange("I2:K").setWrap(true);
+  tab.getRange("J2:J").setFontColor("#9a3412");   // Keep in mind: red, like the page
+  tab.getRange("K2:K").setFontColor("#5b3a8c");   // Our notes: purple, like the page
+  tab.getRange("O2:Q").setHorizontalAlignment("center");
+  [34, 190, 105, 95, 50, 55, 70, 60, 320, 250, 250, 60, 60, 60, 90, 110, 95].forEach((w, i) => tab.setColumnWidth(i + 1, w));
+  tab.setTabColor(NAVY);
+  tab.getRange("A1:Q").setBorder(null, null, null, null, false, true, "#d3deec", SpreadsheetApp.BorderStyle.SOLID);
+
+  // ---- Color coding (conditional formatting) ----
+  const rows = [tab.getRange("A2:Q")];
+  const rule = () => SpreadsheetApp.newConditionalFormatRule();
+  const rules = [
+    // #1 home: gold row (listed first so it wins over the stripes)
+    rule().whenFormulaSatisfied("=$A2=1").setBackground(GOLD).setRanges(rows).build(),
+    // Stripes on every other home
+    rule().whenFormulaSatisfied('=AND($B2<>"", ISEVEN(ROW()))').setBackground(STRIPE).setRanges(rows).build(),
+    // Price: green = cheaper, orange = pricier
+    rule().setGradientMinpoint("#c9ecd6").setGradientMidpointWithValue("#ffffff", SpreadsheetApp.InterpolationType.PERCENTILE, "50")
+      .setGradientMaxpoint("#fbd7b8").setRanges([tab.getRange("D2:D")]).build(),
+    // Size and year built: the bigger / newer, the greener
+    rule().setGradientMinpoint("#ffffff").setGradientMaxpoint("#9fd8b4").setRanges([tab.getRange("G2:G")]).build(),
+    rule().setGradientMinpoint("#ffffff").setGradientMaxpoint("#9fd8b4").setRanges([tab.getRange("H2:H")]).build(),
+    // 4+ bedrooms or 3+ baths: green and bold
+    rule().whenNumberGreaterThanOrEqualTo(4).setFontColor("#1f7a45").setBold(true).setRanges([tab.getRange("E2:E")]).build(),
+    rule().whenNumberGreaterThanOrEqualTo(3).setFontColor("#1f7a45").setBold(true).setRanges([tab.getRange("F2:F")]).build(),
+    // Homes with comments stand out
+    rule().whenTextStartsWith("💬").setBackground("#e6eefb").setFontColor(NAVY).setBold(true).setRanges([tab.getRange("Q2:Q")]).build(),
+  ];
+  tab.setConditionalFormatRules(rules);
+
+  // Warn anyone who tries to type here: changes belong on the page (or the Homes tab).
+  tab.protect().setDescription("Built automatically from the Homes tab. Make changes on the family page.").setWarningOnly(true);
+
+  const url = ss.getUrl().replace(/\/edit.*$/, "") + "/edit#gid=" + tab.getSheetId();
+  Logger.log("On our page tab ready: %s", url);
+  return url;
+}
