@@ -597,7 +597,7 @@
     function rowHtml(h, i, all) {
       const total = all.length;
       const was = originalPrice(h.originalPrice);
-      const drop = was && was > h.price ? `<span class="drop">$${Math.round((was - h.price) / 1000)}K below the original price</span>` : "";
+      const drop = was && was - h.price >= 500 ? `<span class="drop">$${Math.round((was - h.price) / 1000)}K below the original price</span>` : "";
       // Latest change found by the daily Redfin check, e.g. "▼ Dropped $5,000 · Nov 17"
       const diff = h.lastPrice && h.price ? h.price - h.lastPrice : 0;
       const change = diff ? `<span class="${diff < 0 ? "drop" : "rise"}">${diff < 0 ? "▼ Dropped" : "▲ Went up"} ${money(Math.abs(diff))}${h.priceChangedAt ? " · " + shortDate(h.priceChangedAt) : ""}</span>` : "";
