@@ -881,7 +881,7 @@ const SETTINGS = [
   ["baths", "Must have: bathrooms", 2.5, "At least this many bathrooms."],
   ["sqft", "Must have: square feet", 2250, "At least this many square feet."],
   ["garage", "Must have: garage spaces", 2, "At least this many garage spaces."],
-  ["school", "Must have: elementary school rating", 9, "GreatSchools rating out of 10 for the assigned elementary school. 9 means above 8. The radar hides homes below it."],
+  ["school", "Must have: elementary school rating", 8, "GreatSchools rating out of 10 for the assigned elementary school (8 = 8, 9 and 10 are OK). The radar hides homes below it."],
   ["towns", "New-listing radar: towns", "Cary, Clayton, Wake Forest, Holly Springs, Angier, Garner, Fuquay-Varina", "Towns the morning job searches on Redfin, separated by commas."],
   ["radarMax", "New-listing radar: highest price", 450000, "The radar shows new homes up to this price."],
   ["downPct", "Down payment (%)", 20, "Used for the monthly cost. Also editable on the page."],
@@ -1209,6 +1209,11 @@ function radarCheck_() {
       if (prev) { // already known: keep the numbers current
         Object.assign(prev, { price: h.price, dom: h.dom, ppsf: h.ppsf, openHouse: h.openHouse });
         if (prev.status === "gone") prev.status = "seen";
+        // The school minimum in Settings changed: bring back recent matches that pass it now, hide ones that don't.
+        const recent = Date.now() - new Date(prev.foundAt).getTime() < RADAR_DAYS * 864e5;
+        const score = Number(prev.schoolScore);
+        if (/^school below/.test(prev.status) && score >= s.school && recent) prev.status = "new";
+        else if (prev.status === "new" && score && score < s.school) prev.status = "school below " + s.school;
         return;
       }
       if (ours[num] || ours[h.address.toLowerCase().replace(/\W/g, "").slice(0, 8) + h.zip]) return;
