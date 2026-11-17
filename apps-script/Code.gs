@@ -498,7 +498,10 @@ function redfinLookup_(rawUrl) {
     while ((m = re.exec(oh[1]))) if (Number(m[2]) > Date.now()) openHouses.push({ start: Number(m[1]), end: Number(m[2]) });
   }
 
+  const school = elementarySchool_(html);
+
   return {
+    elementary: school ? school.name : "", elementaryScore: school ? school.rating : null,
     lat: field("latitude"), lng: field("longitude"),
     garage: garage ? Number(garage[1]) : null,
     dom: field("cumulativeDaysOnMarket", "(\\d+)"),
@@ -518,6 +521,29 @@ function redfinLookup_(rawUrl) {
     redfinUrl: url,
     photoUrl: /^https:\/\//.test(meta("og:image")) ? meta("og:image") : "",
   };
+}
+
+/**
+ * The elementary school assigned to the home, from Redfin's "servingThisHomeSchools" data:
+ * [{ servesHome: true, greatSchoolsRating: 8, gradeRanges: "PreK-5", name: "… Elementary School" }, …].
+ * That data sits inside the page as text that has been escaped more than once, so we strip
+ * the backslashes first and then read each school. Returns { name, rating } or null.
+ */
+function elementarySchool_(html) {
+  const at = html.indexOf("servingThisHomeSchools");
+  if (at < 0) return null;
+  const text = html.slice(at, at + 8000).replace(/\\/g, "");
+  const end = text.indexOf("]");
+  const schools = (end > 0 ? text.slice(0, end) : text).split('{"servesHome"').slice(1).map((chunk) => ({
+    serves: /^:true/.test(chunk),
+    rating: Number((chunk.match(/"greatSchoolsRating":(\d+)/) || [])[1]) || null,
+    grades: (chunk.match(/"gradeRanges":"([^"]*)"/) || [])[1] || "",
+    name: (chunk.match(/"name":"([^"]*)"/) || [])[1] || "",
+  }));
+  // Elementary = grades that stop at 5th or lower (PreK-5, K-5…), or "Elementary" in the name.
+  const isElementary = (x) => /elementary/i.test(x.name) || /^(PreK|K|\d)-?([1-5])?$/i.test(x.grades.replace(/\s/g, "")) && Number((x.grades.match(/(\d+)$/) || [])[1]) <= 5;
+  const pick = schools.find((x) => x.serves && isElementary(x)) || null;
+  return pick && pick.name ? { name: pick.name, rating: pick.rating } : null;
 }
 
 /** Add (or bring back) a home from its Redfin link, at the bottom of our ranked list. */
@@ -563,6 +589,7 @@ function addFromRedfin_(body) {
 function detailFields_(info) {
   return {
     lat: info.lat, lng: info.lng, garage: info.garage, dom: info.dom, hoa: info.hoa,
+    elementary: info.elementary || null, elementaryScore: info.elementaryScore,
     taxRate: info.taxRate, insurance: info.insurance,
     openHouses: JSON.stringify(info.openHouses || []),
   };
@@ -854,6 +881,7 @@ const SETTINGS = [
   ["baths", "Must have: bathrooms", 2.5, "At least this many bathrooms."],
   ["sqft", "Must have: square feet", 2250, "At least this many square feet."],
   ["garage", "Must have: garage spaces", 2, "At least this many garage spaces."],
+  ["school", "Must have: elementary school rating", 9, "GreatSchools rating out of 10 for the assigned elementary school. 9 means above 8. The radar hides homes below it."],
   ["towns", "New-listing radar: towns", "Cary, Clayton, Wake Forest, Holly Springs, Angier, Garner, Fuquay-Varina", "Towns the morning job searches on Redfin, separated by commas."],
   ["radarMax", "New-listing radar: highest price", 450000, "The radar shows new homes up to this price."],
   ["downPct", "Down payment (%)", 20, "Used for the monthly cost. Also editable on the page."],
@@ -919,7 +947,7 @@ function publicSettings_() {
   const s = settings_();
   const rate30 = Number(PropertiesService.getScriptProperties().getProperty("RATE30")) || null;
   return {
-    budget: s.budget, beds: s.beds, baths: s.baths, sqft: s.sqft, garage: s.garage,
+    budget: s.budget, beds: s.beds, baths: s.baths, sqft: s.sqft, garage: s.garage, school: s.school,
     radarMax: s.radarMax, towns: splitList_(s.towns), downPct: s.downPct,
     rate: s.rate || rate30 || 6.5, rateFromRedfin: !s.rate && !!rate30,
     family: splitList_(s.family), places: places_(s.places).map((p) => p.label),
@@ -1081,7 +1109,7 @@ function saveUpload_(body) {
 
 const RADAR_TAB = "New listings";
 const RADAR_COLUMNS = ["url", "address", "city", "zip", "price", "beds", "baths", "sqft", "garage", "dom",
-  "ppsf", "hoa", "lat", "lng", "photoUrl", "openHouse", "foundAt", "status"];
+  "ppsf", "hoa", "lat", "lng", "photoUrl", "openHouse", "foundAt", "status", "school", "schoolScore"];
 const RADAR_DAYS = 14;  // a match stays in "New today" for two weeks unless someone adds or skips it
 const UA = { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36" };
 
@@ -1192,18 +1220,26 @@ function radarCheck_() {
     // New matches that disappeared from Redfin's results (sold, pending, price went up…)
     Object.keys(byNum).forEach((num) => { if (byNum[num].status === "new" && !seenToday[num]) byNum[num].status = "gone"; });
 
-    // 4) Look at each brand-new match's listing for the photo and the garage (at most 12 a day).
-    fresh.slice(0, 12).forEach((row) => {
+    // 4) Look at each new match's listing for the photo, the garage and the elementary school
+    //    (at most 15 a day). Matches already in the box that were found before the school
+    //    check existed get looked at too.
+    const toCheck = fresh.concat(Object.keys(byNum).map((k) => byNum[k])
+      .filter((r) => r.status === "new" && (r.schoolScore === "" || r.schoolScore === undefined)));
+    toCheck.filter((r, i, a) => a.indexOf(r) === i).slice(0, 15).forEach((row) => {
       try {
         const info = redfinLookup_(row.url);
-        row.photoUrl = info.photoUrl || "";
+        row.photoUrl = info.photoUrl || row.photoUrl || "";
         row.garage = info.garage == null ? "" : info.garage;
+        row.school = info.elementary || "";
+        row.schoolScore = info.elementaryScore == null ? "unknown" : info.elementaryScore;
         if (info.garage !== null && info.garage < s.garage) row.status = "small garage";
-      } catch (e) { /* keep it without a photo */ }
+        else if (info.elementaryScore !== null && info.elementaryScore < s.school) row.status = "school below " + s.school;
+      } catch (e) { /* keep it as it is */ }
       Utilities.sleep(400);
     });
 
     const all = Object.keys(byNum).map((k) => byNum[k]);
+    sheet.getRange(1, 1, 1, RADAR_COLUMNS.length).setValues([RADAR_COLUMNS]); // header, in case new columns were added
     sheet.getRange(2, 1, Math.max(sheet.getLastRow() - 1, 1), RADAR_COLUMNS.length).clearContent();
     if (all.length) sheet.getRange(2, 1, all.length, RADAR_COLUMNS.length)
       .setValues(all.map((r) => RADAR_COLUMNS.map((k) => (r[k] == null ? "" : String(r[k])))));
@@ -1226,8 +1262,8 @@ function radarForPage_() {
     .map((r) => {
       const o = {};
       RADAR_COLUMNS.forEach((k) => {
-        o[k] = ["price", "beds", "baths", "sqft", "garage", "dom", "ppsf", "hoa", "lat", "lng", "openHouse"].indexOf(k) >= 0
-          ? (r[k] === "" ? null : Number(r[k])) : r[k];
+        o[k] = ["price", "beds", "baths", "sqft", "garage", "dom", "ppsf", "hoa", "lat", "lng", "openHouse", "schoolScore"].indexOf(k) >= 0
+          ? (r[k] === "" || isNaN(Number(r[k])) ? null : Number(r[k])) : r[k];
       });
       return o;
     });
@@ -1337,7 +1373,8 @@ function buildDigest_(changes, fresh) {
     section("Status changes", "#12355f", status.map((c) => li(`<b>${c[1]}</b> is now <b>${c[4]}</b> (was ${c[3]}) · ${link(c[6], "Redfin")}`))),
     section("🆕 New homes that match", "#12355f", fresh.slice(0, 15).map((h) => li(
       `<b>${h.address}, ${h.city}</b>: ${money(h.price)} · ${h.beds} bed · ${h.baths} bath · ${commas(h.sqft)} sq ft` +
-      `${h.garage !== "" && h.garage != null ? " · " + h.garage + "-car garage" : ""} · ${link(h.url, "Redfin")}`))),
+      `${h.garage !== "" && h.garage != null ? " · " + h.garage + "-car garage" : ""}` +
+      `${Number(h.schoolScore) ? " · Elementary " + h.schoolScore + "/10" : ""} · ${link(h.url, "Redfin")}`))),
     section("Open houses coming up", "#12355f", soon.map((x) => li(`<b>${when(x.o.start)}</b> – ${Utilities.formatDate(new Date(x.o.end), tz, "h:mm a")}: ${x.h.address}, ${x.h.city}`))),
   ].join("");
 
