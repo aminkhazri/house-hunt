@@ -191,7 +191,7 @@
     tr.moved td, tr.moved + tr.c-row td { animation: moved 1.2s ease-out; }
     @keyframes moved { 0%, 30% { background: #e4efff; } }
 
-    @media (max-width: 1100px) {
+    @media (max-width: 1180px) {
       .top5 { grid-template-columns: 1fr; gap: 10px; }
       .top5 .tile { grid-template-columns: 110px 1fr; align-items: center; column-gap: 12px; }
       .top5 img { grid-row: span 3; height: 82px; }
@@ -267,7 +267,7 @@
     footer p { max-width: 70ch; }
 
     /* Phones and tablets: each home becomes its own block, same order, same labels. */
-    @media (max-width: 1100px) {
+    @media (max-width: 1180px) {
       body { font-size: 19px; }
       header h1 { font-size: 1.8rem; }
       table, thead, tbody, tr, td, caption { display: block; width: 100%; }
@@ -413,7 +413,7 @@
     tr.lifted td:first-child { box-shadow: inset 4px 0 0 var(--rule) !important; }
     :focus-visible { outline-color: var(--sun); }
 
-    @media (max-width: 1100px) {
+    @media (max-width: 1180px) {
       table { border: 0; box-shadow: none; }
       tbody tr.h-row { border: 1px solid var(--rule); border-bottom: 0; }
       tbody tr.c-row { border: 1px solid var(--rule); border-top: 0; box-shadow: 0 8px 18px rgb(18 53 95 / .06); }
@@ -466,7 +466,7 @@
       .chg.down.fresh, .chip.down.fresh, .news.down .tagicon, .news.down::after { animation: none; }
       .news.down::after { display: none; }
     }
-    @media (max-width: 1100px) {
+    @media (max-width: 1180px) {
       tbody tr.h-row td.price.changed.down { background-image: none; }
       .price .was { display: inline; margin-right: 6px; }
       .price.changed strong { display: inline; }
@@ -515,7 +515,15 @@
     .drives { display: block; margin-top: 4px; font-size: .78rem; color: var(--muted); }
     .cost { display: block; margin-top: 4px; font: inherit; font-size: .8rem; font-weight: 800; color: var(--sky); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-decoration-color: var(--rule); text-underline-offset: 3px; white-space: nowrap; }
     .musts { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 5px; }
-    .mh { font-size: .7rem; font-weight: 800; padding: 1px 6px; border-radius: 6px; white-space: nowrap; }
+    .mh { font-size: .7rem; font-weight: 800; padding: 1px 6px; border-radius: 6px; }
+    @media (min-width: 1181px) {
+      /* Wide screens: keep the table inside the window now that rows carry more detail. */
+      .why { min-width: 240px; }
+      .links { width: 120px; }
+      .links .btn { white-space: normal; }
+      .cost { white-space: normal; }
+      td.size { min-width: 118px; }
+    }
     .mh.ok { background: #e6f4ea; color: #1d6b3a; }
     .mh.no { background: #fde4e1; color: #a5322a; }
     .mh.unk { background: #eef1f5; color: var(--muted); }
@@ -529,7 +537,7 @@
     .vote-btn, .tour-chip { font: inherit; font-size: .85rem; font-weight: 800; border-radius: 999px; padding: 2px 10px; cursor: pointer; }
     .vote-btn { color: #c0264b; background: #fff0f3; border: 1px solid #f3bccb; }
     .tour-chip { color: #1d6b3a; background: #eef8f1; border: 1px solid #b9dfc6; }
-    @media (max-width: 1100px) { .family { margin-left: 0; padding-left: 0; } }
+    @media (max-width: 1180px) { .family { margin-left: 0; padding-left: 0; } }
 
     .pick { display: flex; flex-wrap: wrap; gap: 8px; }
     .pick button { font: inherit; font-size: 1.05rem; font-weight: 800; padding: 10px 16px; border-radius: 12px; border: 1px solid var(--rule); background: #fff; color: var(--navy); cursor: pointer; }
