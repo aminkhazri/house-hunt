@@ -1119,8 +1119,11 @@ function radarSearch_(town, s) {
     beds: at("BEDS"), baths: at("BATHS"), sqft: at("SQUARE FEET"), dom: at("DAYS ON MARKET"), ppsf: at("$/SQUARE FEET"),
     hoa: at("HOA"), status: at("STATUS"), oh: at("NEXT OPEN HOUSE START"), lat: at("LATITUDE"), lng: at("LONGITUDE"), type: at("PROPERTY TYPE") };
   const n = (v) => (v === "" || v == null || isNaN(Number(v)) ? null : Number(v));
+  // The town from the link (/NC/Fuquay-Varina/…) is more reliable than the CSV's CITY column,
+  // which is sometimes scrambled for new-construction listings.
+  const townOf = (url, fallback) => decodeURIComponent((String(url).split("/")[4] || "")).replace(/-/g, " ") || fallback;
   return rows.map((r) => ({
-    url: r[c.url], address: r[c.address], city: r[c.city], zip: r[c.zip], price: n(r[c.price]),
+    url: r[c.url], address: r[c.address], city: townOf(r[c.url], r[c.city]), zip: r[c.zip], price: n(r[c.price]),
     beds: n(r[c.beds]), baths: n(r[c.baths]), sqft: n(r[c.sqft]), dom: n(r[c.dom]), ppsf: n(r[c.ppsf]),
     hoa: n(r[c.hoa]), status: r[c.status], type: r[c.type], lat: n(r[c.lat]), lng: n(r[c.lng]),
     openHouse: r[c.oh] ? new Date(r[c.oh]).getTime() || "" : "",

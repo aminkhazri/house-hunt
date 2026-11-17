@@ -1638,15 +1638,17 @@
     /* ---------- "Might negotiate": signs a seller may take a lower offer ---------- */
     function negotiate(h) {
       const why = [];
-      if (h.dom >= 45) why.push(`on the market ${h.dom} days`);
+      // "Long" depends on the town: compare with how long homes there usually sit (from the morning radar).
+      const town = market[h.city];
+      const usual = town?.dom && town.count >= 5 ? town.dom : 75;
+      if (h.dom >= Math.max(60, usual * 2)) why.push(`for sale ${h.dom} days (about ${Math.round(h.dom / usual)}× longer than usual here)`);
       const was = originalPrice(h.originalPrice);
       const cuts = (Number(h.drops) || 0) + (was && was > h.price + 500 ? 1 : 0);
       if (cuts >= 2) why.push(`price cut ${cuts} times`);
-      const town = market[h.city];
       if (town?.ppsf && h.price && h.sqft && town.count >= 5) {
         const ppsf = h.price / h.sqft;
         const pct = Math.round((1 - ppsf / town.ppsf) * 100);
-        if (pct >= 8) why.push(`${pct}% below the usual price per sq ft in ${h.city}`);
+        if (pct >= 10) why.push(`${pct}% below the usual price per sq ft in ${h.city}`);
       }
       return why;
     }
