@@ -886,6 +886,7 @@ const SETTINGS = [
   ["radarMax", "New-listing radar: highest price", 460000, "The radar shows new homes up to this price."],
   ["downPct", "Down payment (%)", 20, "Used for the monthly cost. Also editable on the page."],
   ["rate", "Mortgage rate (%)", "", "Leave blank to use today's 30-year fixed rate from Redfin."],
+  ["tourDays", "Tour days", "2026-11-20, 2026-11-21", "Dates we'll be touring (like 2026-11-20 or 11/20), separated by commas. The page and the email only show open houses on these days. Leave blank to show every upcoming open house."],
   ["family", "Family voters", "Amin, Aurora, Rachel, David", "Names for the hearts vote, separated by commas."],
   ["emailTo", "Morning email also goes to", "Katie.M.Ernst@gmail.com, David.L.Ernst@gmail.com", "The Sheet's owner always gets it. Separate addresses with commas. Leave blank for just the owner."],
   ["places", "Drive times to", "RDU Airport = Raleigh-Durham International Airport, NC; Downtown Raleigh = Fayetteville St, Raleigh, NC; WakeMed = WakeMed Raleigh Campus, Raleigh, NC", "Short name = address, separated by semicolons."],
@@ -942,6 +943,24 @@ function places_(s) {
   }).filter((p) => p.label && p.address).slice(0, 5);
 }
 
+/**
+ * "2026-11-20, 11/21" -> ["2026-11-20", "2026-11-21"]. Days that have passed are dropped,
+ * so once the tour is over the page goes back to showing every upcoming open house.
+ */
+function tourDays_(text) {
+  const tz = Session.getScriptTimeZone();
+  const today = Utilities.formatDate(new Date(), tz, "yyyy-MM-dd");
+  const year = Number(today.slice(0, 4));
+  const pad = (n) => String(n).padStart(2, "0");
+  return splitList_(text).map((d) => {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+    const m = d.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/);
+    if (!m) return "";
+    const y = m[3] ? (m[3].length === 2 ? 2000 + Number(m[3]) : Number(m[3])) : year;
+    return y + "-" + pad(m[1]) + "-" + pad(m[2]);
+  }).filter((d) => d && d >= today);
+}
+
 /** What the page needs to know (no email addresses). */
 function publicSettings_() {
   const s = settings_();
@@ -951,6 +970,7 @@ function publicSettings_() {
     radarMax: s.radarMax, towns: splitList_(s.towns), downPct: s.downPct,
     rate: s.rate || rate30 || 6.5, rateFromRedfin: !s.rate && !!rate30,
     family: splitList_(s.family), places: places_(s.places).map((p) => p.label),
+    tourDays: tourDays_(s.tourDays),
   };
 }
 
@@ -1356,9 +1376,12 @@ function buildDigest_(changes, fresh) {
   const status = changes.filter((c) => c[2] === "Status");
 
   const soon = [];
+  const tourDays = tourDays_(s.tourDays);
   readHomes_().filter((h) => h.rank && !h.removed).forEach((h) => {
     parseJson_(h.openHouses, []).forEach((o) => {
-      if (o.start > Date.now() && o.start < Date.now() + 4 * 864e5) soon.push({ h: h, o: o });
+      const day = Utilities.formatDate(new Date(o.start), tz, "yyyy-MM-dd");
+      const wanted = tourDays.length ? tourDays.indexOf(day) >= 0 : o.start < Date.now() + 4 * 864e5;
+      if (o.start > Date.now() && wanted) soon.push({ h: h, o: o });
     });
   });
   soon.sort((a, b) => a.o.start - b.o.start);
@@ -1380,7 +1403,7 @@ function buildDigest_(changes, fresh) {
       `<b>${h.address}, ${h.city}</b>: ${money(h.price)} · ${h.beds} bed · ${h.baths} bath · ${commas(h.sqft)} sq ft` +
       `${h.garage !== "" && h.garage != null ? " · " + h.garage + "-car garage" : ""}` +
       `${Number(h.schoolScore) ? " · Elementary " + h.schoolScore + "/10" : ""} · ${link(h.url, "Redfin")}`))),
-    section("Open houses coming up", "#12355f", soon.map((x) => li(`<b>${when(x.o.start)}</b> – ${Utilities.formatDate(new Date(x.o.end), tz, "h:mm a")}: ${x.h.address}, ${x.h.city}`))),
+    section(tourDays.length ? "Open houses on our tour days" : "Open houses coming up", "#12355f", soon.map((x) => li(`<b>${when(x.o.start)}</b> – ${Utilities.formatDate(new Date(x.o.end), tz, "h:mm a")}: ${x.h.address}, ${x.h.city}`))),
   ].join("");
 
   const parts = [];

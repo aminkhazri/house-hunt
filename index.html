@@ -613,7 +613,7 @@
 
     <section class="panel" id="openhouses" hidden aria-labelledby="oh-title">
       <h2 id="oh-title">🗓 Open houses coming up</h2>
-      <p class="sub">For homes on our list. Tap "Add to calendar" to save one, or "Plan the route" to see that day's stops on a map.</p>
+      <p class="sub" id="oh-sub">For homes on our list. Tap "Add to calendar" to save one, or "Plan the route" to see that day's stops on a map.</p>
       <div id="oh-list"></div>
     </section>
     <section class="overview" aria-labelledby="top5-title">
@@ -1798,8 +1798,14 @@
     }
 
     /* ---------- Open houses for homes on our list ---------- */
+    /** Our tour days from Settings (only ones still ahead), as "YYYY-MM-DD" in local time. */
+    const dayKey = (ms) => { const d = new Date(ms); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+    const tourDays = () => (S.tourDays || []).filter((d) => d >= dayKey(Date.now()));
+    /** Open houses to show: only on our tour days if we have any coming up, otherwise the next 10 days. */
     function upcoming(h) {
-      return parse(h.openHouses, []).filter((o) => o.end > Date.now() && o.start < Date.now() + 10 * 864e5);
+      const days = tourDays();
+      return parse(h.openHouses, []).filter((o) => o.end > Date.now() &&
+        (days.length ? days.includes(dayKey(o.start)) : o.start < Date.now() + 10 * 864e5));
     }
     function ohTag(h) {
       const next = upcoming(h)[0];
@@ -1825,7 +1831,13 @@
       all.sort((a, b) => a.o.start - b.o.start);
       const days = {};
       all.forEach((x) => { const k = new Date(x.o.start).toDateString(); (days[k] = days[k] || []).push(x); });
-      $("openhouses").hidden = all.length === 0;
+      const wanted = tourDays();
+      const nice = (d) => new Date(d + "T12:00").toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+      $("oh-title").textContent = wanted.length ? "🗓 Open houses on our tour days" : "🗓 Open houses coming up";
+      $("oh-sub").textContent = (wanted.length ? `Only showing ${wanted.map(nice).join(" and ")}. ` : "For homes on our list. ")
+        + `Tap "Add to calendar" to save one, or "Plan the route" to see that day's stops on a map.`;
+      $("openhouses").hidden = all.length === 0 && !wanted.length;
+      if (!all.length) { $("oh-list").innerHTML = `<p class="sub">None of our homes have an open house on those days yet. Redfin is checked every morning, so new ones will show up here.</p>`; return; }
       $("oh-list").innerHTML = Object.keys(days).map((k) => {
         const stops = days[k];
         return `<div class="oh-day"><h3>${dayName(stops[0].o.start)}${stops.length > 1 ? `<a href="${esc(routeLink(stops))}" target="_blank" rel="noopener">🚗 Plan the route (${stops.length} stops)</a>` : ""}</h3><ul>
