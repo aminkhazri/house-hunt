@@ -1305,7 +1305,9 @@ function digestRecipients_() {
  */
 function buildDigest_(changes, fresh) {
   const s = settings_();
-  const money = (n) => "$" + Number(n).toLocaleString("en-US");
+  // Apps Script's toLocaleString() skips the thousands commas, so add them by hand.
+  const commas = (n) => String(Math.round(Number(n))).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  const money = (n) => "$" + commas(n);
   const tz = Session.getScriptTimeZone();
   const day = Number(Utilities.formatDate(new Date(), tz, "u")); // 1 = Monday … 7 = Sunday
   const drops = changes.filter((c) => c[2] === "Price" && c[5] < 0);
@@ -1334,7 +1336,7 @@ function buildDigest_(changes, fresh) {
     section("▲ Price went up", "#b45309", rises.map((c) => li(`<b>${c[1]}</b>: ${money(c[3])} → ${money(c[4])} · ${link(c[6], "Redfin")}`))),
     section("Status changes", "#12355f", status.map((c) => li(`<b>${c[1]}</b> is now <b>${c[4]}</b> (was ${c[3]}) · ${link(c[6], "Redfin")}`))),
     section("🆕 New homes that match", "#12355f", fresh.slice(0, 15).map((h) => li(
-      `<b>${h.address}, ${h.city}</b>: ${money(h.price)} · ${h.beds} bed · ${h.baths} bath · ${Number(h.sqft).toLocaleString("en-US")} sq ft` +
+      `<b>${h.address}, ${h.city}</b>: ${money(h.price)} · ${h.beds} bed · ${h.baths} bath · ${commas(h.sqft)} sq ft` +
       `${h.garage !== "" && h.garage != null ? " · " + h.garage + "-car garage" : ""} · ${link(h.url, "Redfin")}`))),
     section("Open houses coming up", "#12355f", soon.map((x) => li(`<b>${when(x.o.start)}</b> – ${Utilities.formatDate(new Date(x.o.end), tz, "h:mm a")}: ${x.h.address}, ${x.h.city}`))),
   ].join("");
