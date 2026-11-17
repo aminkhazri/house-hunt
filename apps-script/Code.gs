@@ -13,6 +13,15 @@
  *   POST { action: "moveTo", id, position: 1..n }       -> { ok, order: [ids] }
  *   POST { action: "restore", id }                -> { ok }
  *   POST { action: "comment", id, name, text }    -> { ok, comment }  (saved in the Comments tab)
+ *   POST { action: "vote", id, name, hearts: 1..5 } -> { ok, vote }   (one vote per person per home, Votes tab)
+ *   POST { action: "upload", homeId, name, mime, data(base64) } -> { ok, file: { id, type } }  (tour photo / voice note, saved in Drive)
+ *   POST { action: "tour", tour: { id, homeId, name, answers, notes, files } } -> { ok, tour }  (Tours tab)
+ *   POST { action: "radar", url, decision: "skip" }  -> { ok }   (hide a "New today" match)
+ *   POST { action: "settings", downPct, rate }    -> { ok, settings }  (the monthly-cost numbers)
+ *
+ * The morning job is morningCheck() (run setupTriggers() once to schedule it). It re-reads every
+ * listing (price, status, open houses, days on market…), looks for new matches, works out
+ * drive times, and emails the family a short summary when something changed.
  *
  * Reading and most changes are open to anyone with the URL; only "remove" needs the passcode stored
  * in Script Properties (key: PASSCODE). Removing never deletes a row — it
@@ -37,9 +46,12 @@ const COLUMNS = [
   "removedReason",
   // Filled in by the daily Redfin check: the price before the latest change, and when it changed.
   "lastPrice", "priceChangedAt",
+  // Also filled in every morning from the Redfin listing page.
+  "lat", "lng", "garage", "dom", "taxRate", "insurance", "drops", "openHouses", "drives", "statusChangedAt",
 ];
 const NUMBER_FIELDS = ["price", "mortgage", "yearBuilt", "sqft", "beds", "baths", "hoa",
-  "elementaryScore", "middleScore", "highScore", "rank", "lastPrice"];
+  "elementaryScore", "middleScore", "highScore", "rank", "lastPrice",
+  "lat", "lng", "garage", "dom", "taxRate", "insurance", "drops"];
 
 /* ---------- One-time setup ---------- */
 
@@ -102,6 +114,8 @@ function doPost(e) {
   const lock = LockService.getScriptLock();
   try {
     const body = JSON.parse((e && e.postData && e.postData.contents) || "{}");
+    // Uploads only write to Drive, not the Sheet, so they don't wait for the lock.
+    if (body.action === "upload") return json_({ ok: true, file: saveUpload_(body) });
     const expected = PropertiesService.getScriptProperties().getProperty("PASSCODE");
     // Only removing a home needs the family passcode. Adding, moving, commenting and
     // bringing a home back are open to anyone with the page (all easy to undo).
@@ -114,12 +128,20 @@ function doPost(e) {
     clearListCache_();    // something is about to change, so the saved copy of the list is out of date
     switch (body.action) {
       case "add": return json_({ ok: true, home: addHome_(body.home) });
-      case "addRedfin": return json_({ ok: true, home: addFromRedfin_(body) });
+      case "addRedfin": {
+        const home = addFromRedfin_(body);
+        decideRadar_(home.redfinUrl, "added"); // if it came from the "New today" box, take it out of there
+        return json_({ ok: true, home: home });
+      }
       case "move": return json_({ ok: true, order: moveHome_(body.id, body.direction) });
       case "moveTo": return json_({ ok: true, order: moveHome_(body.id, null, Number(body.position)) });
       case "remove": setRemoved_(body.id, true, body.reason); return json_({ ok: true });
       case "restore": setRemoved_(body.id, false); return json_({ ok: true });
       case "comment": return json_({ ok: true, comment: addComment_(body) });
+      case "vote": return json_({ ok: true, vote: saveVote_(body) });
+      case "tour": return json_({ ok: true, tour: saveTour_(body.tour) });
+      case "radar": return json_({ ok: true, radar: decideRadar_(body.url, body.decision) });
+      case "settings": return json_({ ok: true, settings: saveCostSettings_(body) });
       default: return json_({ ok: false, error: "Unknown action." });
     }
   } catch (err) {
@@ -145,12 +167,21 @@ function listJson_() {
   if (hit) return hit;
   const homes = readHomes_().filter((h) => h.rank);
   const ids = homes.map((h) => h.id);
+  const mine = (x) => ids.indexOf(x.homeId) >= 0;
+  const props = PropertiesService.getScriptProperties();
   const json = JSON.stringify({
     ok: true,
     homes: homes,
-    comments: readComments_().filter((c) => ids.indexOf(c.homeId) >= 0),
+    comments: readComments_().filter(mine),
     safety: safetyFor_(homes.map((h) => h.zip)),
-    pricesChecked: PropertiesService.getScriptProperties().getProperty("PRICES_CHECKED") || "",
+    pricesChecked: props.getProperty("PRICES_CHECKED") || "",
+    votes: readTab_(VOTES_TAB, VOTE_COLUMNS).filter(mine),
+    tours: readTab_(TOURS_TAB, TOUR_COLUMNS).filter(mine).map((t) => Object.assign(t, {
+      answers: parseJson_(t.answers, {}), files: parseJson_(t.files, []),
+    })),
+    radar: radarForPage_(),
+    market: parseJson_(props.getProperty("MARKET"), {}),
+    settings: publicSettings_(),
   });
   if (json.length < 90000) cache.put(LIST_CACHE_KEY, json, LIST_CACHE_SECONDS); // cache values max out at 100 KB
   return json;
@@ -163,6 +194,7 @@ function clearListCache_() {
 /** Runs by itself whenever someone edits the Google Sheet by hand, so the page shows the edit right away. */
 function onEdit() {
   clearListCache_();
+  CacheService.getScriptCache().remove("SETTINGS"); // in case the Settings tab was edited
 }
 
 /* ---------- Sheet helpers ---------- */
@@ -450,7 +482,31 @@ function redfinLookup_(rawUrl) {
     : !/sale/i.test(prefix) ? "Off market"
     : /pending|contingent/i.test(listing) ? "Pending" : "Active";
 
+  // Details from the data Redfin puts inside the page. Inside that data the quotes are
+  // often escaped (\"name\":value), so every pattern allows an optional backslash.
+  const field = (name, pattern) => {
+    const m = html.match(new RegExp(name + '\\\\?"\\s*:\\s*' + (pattern || "(-?[\\d.]+)")));
+    return m ? Number(m[1]) : null;
+  };
+  const garage = html.match(/(\d+) garage spaces?/i) || html.match(/Parking: (\d+) car garage/i);
+  // Upcoming open houses: [{start, end}] as times in milliseconds.
+  const openHouses = [];
+  const oh = html.match(/openHouses\\?"\s*:\s*\[([^\]]*)\]/);
+  if (oh) {
+    const re = /startTime\\?"\s*:\s*(\d+)\s*,\s*\\?"endTime\\?"\s*:\s*(\d+)/g;
+    let m;
+    while ((m = re.exec(oh[1]))) if (Number(m[2]) > Date.now()) openHouses.push({ start: Number(m[1]), end: Number(m[2]) });
+  }
+
   return {
+    lat: field("latitude"), lng: field("longitude"),
+    garage: garage ? Number(garage[1]) : null,
+    dom: field("cumulativeDaysOnMarket", "(\\d+)"),
+    hoa: field("monthlyHoaDues"),
+    taxRate: field("propertyTaxRate"),            // % of the price per year, Redfin's estimate
+    insurance: field("homeInsuranceYearlyEstimate", "(\\d+)"), // $ per year, Redfin's estimate
+    rate30: field("thirtyYearFixed"),             // today's 30-year fixed rate Redfin shows (Bankrate)
+    openHouses: openHouses,
     address: street, city: city, zip: zip,
     price: num(/\$([\d,]+)/),
     beds: num(/([\d.]+)\s*beds?/i),
@@ -490,15 +546,26 @@ function addFromRedfin_(body) {
     const set = (key, v) => { const c = header.indexOf(key); if (c >= 0 && v !== null && v !== "") sheet.getRange(r + 1, c + 1).setValue(v); };
     set("price", info.price); set("photoUrl", info.photoUrl); set("redfinUrl", info.redfinUrl);
     set("status", info.status); set("rank", nextRank); set("why", why);
+    const extra = detailFields_(info);
+    Object.keys(extra).forEach((k) => set(k, extra[k]));
     sheet.getRange(r + 1, header.indexOf("removed") + 1).setValue(false);
     return Object.assign({}, existing, info, { rank: nextRank, why: why, removed: false });
   }
 
   const home = Object.assign(cleanHome_(Object.assign({}, info, {
     addedBy: text(body.addedBy, 60), list: "Added " + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "MMM d"),
-  })), { safety: safety, rank: nextRank, why: why, watch: "", deadline: "" });
+  })), { safety: safety, rank: nextRank, why: why, watch: "", deadline: "" }, detailFields_(info));
   sheet.appendRow(headerRow_(sheet, home));
   return home;
+}
+
+/** The extra listing details we keep in the Homes tab (open houses are saved as JSON text). */
+function detailFields_(info) {
+  return {
+    lat: info.lat, lng: info.lng, garage: info.garage, dom: info.dom, hoa: info.hoa,
+    taxRate: info.taxRate, insurance: info.insurance,
+    openHouses: JSON.stringify(info.openHouses || []),
+  };
 }
 
 /** Build a row in the sheet's actual column order (safer than assuming COLUMNS order). */
@@ -697,6 +764,8 @@ function refreshPrices() {
   });
 
   // 2) Then take the lock (so we can't collide with someone using the page) and write the changes.
+  //    We change the values in memory, then write each changed column back in one go:
+  //    one setValues() per column is much faster than one setValue() per cell.
   const lock = LockService.getScriptLock();
   lock.waitLock(20000);
   const changes = [];
@@ -705,16 +774,18 @@ function refreshPrices() {
     const values = sheet.getDataRange().getValues();
     const header = values[0];
     const col = (key) => header.indexOf(key);
+    const touched = {};
     const now = new Date().toISOString();
     for (let r = 1; r < values.length; r++) {
       const info = fresh[String(values[r][0])];
       if (!info) continue;
-      const set = (key, v) => sheet.getRange(r + 1, col(key) + 1).setValue(v);
+      const set = (key, v) => { if (values[r][col(key)] !== v) { values[r][col(key)] = v; touched[key] = true; } };
       const name = values[r][col("address")] + ", " + values[r][col("city")];
 
       const oldStatus = String(values[r][col("status")] || "");
       if (info.status && info.status !== oldStatus) {
         set("status", info.status);
+        set("statusChangedAt", now);
         changes.push([now, name, "Status", oldStatus || "(blank)", info.status, "", info.redfinUrl]);
       }
 
@@ -726,14 +797,27 @@ function refreshPrices() {
       if (forSale && sane && info.price !== oldPrice) {
         set("price", info.price);
         if (oldPrice) { set("lastPrice", oldPrice); set("priceChangedAt", now); }
+        if (oldPrice && info.price < oldPrice) set("drops", (Number(values[r][col("drops")]) || 0) + 1);
         changes.push([now, name, "Price", oldPrice || "", info.price, oldPrice ? info.price - oldPrice : "", info.redfinUrl]);
       }
+
+      // Quiet details: no history line, just keep them current.
+      const extra = detailFields_(info);
+      Object.keys(extra).forEach((k) => { if (extra[k] !== null && extra[k] !== undefined) set(k, extra[k]); });
     }
+    Object.keys(touched).forEach((key) => {
+      const c = col(key);
+      sheet.getRange(2, c + 1, values.length - 1, 1).setValues(values.slice(1).map((row) => [row[c]]));
+    });
     if (changes.length) {
       const log = historySheet_();
       log.getRange(log.getLastRow() + 1, 1, changes.length, changes[0].length).setValues(changes);
     }
-    PropertiesService.getScriptProperties().setProperty("PRICES_CHECKED", now);
+    // Remember today's 30-year rate from Redfin for the monthly-cost estimate.
+    const rate = Object.keys(fresh).map((id) => fresh[id].rate30).filter((x) => x > 1 && x < 20)[0];
+    const props = PropertiesService.getScriptProperties();
+    if (rate) props.setProperty("RATE30", String(rate));
+    props.setProperty("PRICES_CHECKED", now);
     clearListCache_(); // so the page shows the new prices right away
   } finally {
     lock.releaseLock();
@@ -755,4 +839,557 @@ function historySheet_() {
     [170, 220, 110, 100, 100, 100, 320].forEach((w, i) => sheet.setColumnWidth(i + 1, w));
   }
   return sheet;
+}
+
+/* =====================================================================
+   Settings tab: the family's must-haves and other knobs, in plain words.
+   Edit the Value column in the Sheet; the page and the morning job read it.
+   ===================================================================== */
+
+const SETTINGS_TAB = "Settings";
+const SETTINGS = [
+  // key, label shown in the Sheet, default, what it means
+  ["budget", "Budget (most we want to pay)", 400000, "Homes above this get a red \"over budget\" tick on the page."],
+  ["beds", "Must have: bedrooms", 3, "At least this many bedrooms."],
+  ["baths", "Must have: bathrooms", 2.5, "At least this many bathrooms."],
+  ["sqft", "Must have: square feet", 2250, "At least this many square feet."],
+  ["garage", "Must have: garage spaces", 2, "At least this many garage spaces."],
+  ["towns", "New-listing radar: towns", "Cary, Clayton, Wake Forest, Holly Springs, Angier, Garner, Fuquay-Varina", "Towns the morning job searches on Redfin, separated by commas."],
+  ["radarMax", "New-listing radar: highest price", 450000, "The radar shows new homes up to this price."],
+  ["downPct", "Down payment (%)", 20, "Used for the monthly cost. Also editable on the page."],
+  ["rate", "Mortgage rate (%)", "", "Leave blank to use today's 30-year fixed rate from Redfin."],
+  ["family", "Family voters", "Amin, Aurora, Rachel, David", "Names for the hearts vote, separated by commas."],
+  ["emailTo", "Morning email also goes to", "rmskhazri@gmail.com, Katie.M.Ernst@gmail.com, David.L.Ernst@gmail.com", "The Sheet's owner always gets it. Separate addresses with commas. Leave blank for just the owner."],
+  ["places", "Drive times to", "RDU Airport = Raleigh-Durham International Airport, NC; Downtown Raleigh = Fayetteville St, Raleigh, NC; WakeMed = WakeMed Raleigh Campus, Raleigh, NC", "Short name = address, separated by semicolons."],
+  ["pageUrl", "Family page link", "https://aminkhazri.github.io/house-hunt/", "Used in the morning email."],
+];
+
+function settingsSheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(SETTINGS_TAB);
+  if (!sheet) {
+    sheet = ss.insertSheet(SETTINGS_TAB);
+    sheet.getRange(1, 1, 1, 3).setValues([["Setting", "Value", "What it means"]])
+      .setFontWeight("bold").setBackground("#12355f").setFontColor("#ffffff");
+    sheet.setFrozenRows(1);
+    sheet.getRange("B:B").setNumberFormat("@").setHorizontalAlignment("left"); // keep values as typed
+    [260, 380, 520].forEach((w, i) => sheet.setColumnWidth(i + 1, w));
+    sheet.setTabColor("#e3b94f");
+  }
+  // Add any setting the tab doesn't have yet (keeps values people already changed).
+  const labels = sheet.getLastRow() > 1 ? sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues().flat() : [];
+  const missing = SETTINGS.filter(([, label]) => labels.indexOf(label) < 0);
+  if (missing.length) {
+    sheet.getRange(sheet.getLastRow() + 1, 1, missing.length, 3)
+      .setValues(missing.map(([, label, def, help]) => [label, String(def), help]));
+  }
+  return sheet;
+}
+
+/** All settings as { key: value } (numbers where the default is a number). Cached for a minute. */
+function settings_() {
+  const cache = CacheService.getScriptCache();
+  const hit = cache.get("SETTINGS");
+  if (hit) return JSON.parse(hit);
+  const sheet = settingsSheet_();
+  const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, 2).getValues();
+  const out = {};
+  SETTINGS.forEach(([key, label, def]) => {
+    const row = rows.find((r) => r[0] === label);
+    let v = row ? String(row[1]).trim() : String(def);
+    if (typeof def === "number") v = v === "" || isNaN(Number(v.replace(/[$,%]/g, ""))) ? def : Number(v.replace(/[$,%]/g, ""));
+    out[key] = v;
+  });
+  cache.put("SETTINGS", JSON.stringify(out), 60);
+  return out;
+}
+
+const splitList_ = (s, sep) => String(s || "").split(sep || ",").map((x) => x.trim()).filter(String);
+
+/** "RDU Airport = Raleigh-Durham…; Downtown = …" -> [{ label, address }] */
+function places_(s) {
+  return splitList_(s, ";").map((p) => {
+    const i = p.indexOf("=");
+    return i > 0 ? { label: p.slice(0, i).trim(), address: p.slice(i + 1).trim() } : { label: p, address: p };
+  }).filter((p) => p.label && p.address).slice(0, 5);
+}
+
+/** What the page needs to know (no email addresses). */
+function publicSettings_() {
+  const s = settings_();
+  const rate30 = Number(PropertiesService.getScriptProperties().getProperty("RATE30")) || null;
+  return {
+    budget: s.budget, beds: s.beds, baths: s.baths, sqft: s.sqft, garage: s.garage,
+    radarMax: s.radarMax, towns: splitList_(s.towns), downPct: s.downPct,
+    rate: s.rate || rate30 || 6.5, rateFromRedfin: !s.rate && !!rate30,
+    family: splitList_(s.family), places: places_(s.places).map((p) => p.label),
+  };
+}
+
+/** The page's monthly-cost box can change the down payment and the rate (blank rate = Redfin's). */
+function saveCostSettings_(body) {
+  const sheet = settingsSheet_();
+  const labels = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues().flat();
+  const write = (key, v) => {
+    const label = SETTINGS.find((x) => x[0] === key)[1];
+    sheet.getRange(labels.indexOf(label) + 2, 2).setValue(String(v));
+  };
+  const down = Number(body.downPct);
+  if (!(down >= 0 && down <= 100)) throw new Error("Down payment should be between 0 and 100%.");
+  write("downPct", down);
+  const rate = String(body.rate == null ? "" : body.rate).trim();
+  if (rate !== "" && !(Number(rate) > 0 && Number(rate) < 20)) throw new Error("The rate should be a percent, like 6.5.");
+  write("rate", rate);
+  CacheService.getScriptCache().remove("SETTINGS");
+  return publicSettings_();
+}
+
+/* ---------- Small helpers for the extra tabs ---------- */
+
+function parseJson_(text, fallback) {
+  try { return text ? JSON.parse(text) : fallback; } catch (e) { return fallback; }
+}
+
+/** A tab with a header row, created the first time it's needed. */
+function tab_(name, columns, color) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(name);
+  if (!sheet) {
+    sheet = ss.insertSheet(name);
+    sheet.getRange(1, 1, 1, columns.length).setValues([columns])
+      .setFontWeight("bold").setBackground(color || "#e8f1fd");
+    sheet.setFrozenRows(1);
+    sheet.getRange(1, 1, sheet.getMaxRows(), columns.length).setNumberFormat("@"); // plain text, no surprises
+  }
+  return sheet;
+}
+
+/** Every row of a tab as objects ({} per row, keyed by the column names). */
+function readTab_(name, columns) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(name);
+  if (!sheet || sheet.getLastRow() < 2) return [];
+  return sheet.getRange(2, 1, sheet.getLastRow() - 1, columns.length).getValues()
+    .filter((r) => r[0] !== "")
+    .map((r) => {
+      const o = {};
+      columns.forEach((c, i) => { o[c] = r[i] instanceof Date ? r[i].toISOString() : String(r[i]); });
+      return o;
+    });
+}
+
+function homeExists_(id) {
+  const sheet = sheet_();
+  const ids = sheet.getRange(2, 1, Math.max(sheet.getLastRow() - 1, 1), 1).getValues().flat().map(String);
+  if (ids.indexOf(String(id)) < 0) throw new Error("Couldn't find that home. Refresh the page and try again.");
+  return ids.indexOf(String(id)) + 2;
+}
+
+/* ---------- Family votes: 1 to 5 hearts per person per home ---------- */
+
+const VOTES_TAB = "Votes";
+const VOTE_COLUMNS = ["homeId", "name", "hearts", "at"];
+
+function saveVote_(body) {
+  homeExists_(body.id);
+  let name = String(body.name || "").trim().slice(0, 40);
+  if (!name) throw new Error("Please pick your name.");
+  // "rachel" and "Rachel " count as the same voter as "Rachel".
+  const fam = splitList_(settings_().family);
+  name = fam.find((f) => f.toLowerCase() === name.toLowerCase()) || name;
+  const hearts = Math.round(Number(body.hearts));
+  if (!(hearts >= 0 && hearts <= 5)) throw new Error("Pick 1 to 5 hearts.");
+
+  const sheet = tab_(VOTES_TAB, VOTE_COLUMNS, "#fde2e4");
+  const rows = sheet.getLastRow() > 1 ? sheet.getRange(2, 1, sheet.getLastRow() - 1, 2).getValues() : [];
+  const i = rows.findIndex((r) => String(r[0]) === String(body.id) && String(r[1]).toLowerCase() === name.toLowerCase());
+  const vote = { homeId: String(body.id), name: name, hearts: String(hearts), at: new Date().toISOString() };
+  if (hearts === 0) { if (i >= 0) sheet.deleteRow(i + 2); return vote; } // 0 = take my vote back
+  const row = VOTE_COLUMNS.map((k) => vote[k]);
+  if (i >= 0) sheet.getRange(i + 2, 1, 1, row.length).setValues([row]);
+  else sheet.appendRow(row);
+  return vote;
+}
+
+/* ---------- Tour notes: checklist answers, notes, photos and voice notes ---------- */
+
+const TOURS_TAB = "Tours";
+const TOUR_COLUMNS = ["id", "homeId", "name", "at", "answers", "notes", "files"];
+
+function saveTour_(input) {
+  const t = input || {};
+  homeExists_(t.homeId);
+  const id = String(t.id || "");
+  if (!/^[a-z0-9-]{6,24}$/.test(id)) throw new Error("Bad tour id.");
+  const answers = {};
+  Object.keys(t.answers || {}).slice(0, 30).forEach((k) => {
+    answers[String(k).slice(0, 30)] = String(t.answers[k]).slice(0, 20);
+  });
+  const files = (Array.isArray(t.files) ? t.files : []).slice(0, 40)
+    .filter((f) => f && /^[\w-]{10,}$/.test(f.id) && /^(photo|audio)$/.test(f.type))
+    .map((f) => ({ id: f.id, type: f.type }));
+  const tour = {
+    id: id, homeId: String(t.homeId), name: String(t.name || "").trim().slice(0, 40) || "Someone",
+    at: new Date().toISOString(), answers: JSON.stringify(answers),
+    notes: String(t.notes || "").trim().slice(0, 3000), files: JSON.stringify(files),
+  };
+  const sheet = tab_(TOURS_TAB, TOUR_COLUMNS, "#e6f4ea");
+  const ids = sheet.getLastRow() > 1 ? sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues().flat().map(String) : [];
+  const row = TOUR_COLUMNS.map((k) => tour[k]);
+  const i = ids.indexOf(id);
+  if (i >= 0) sheet.getRange(i + 2, 1, 1, row.length).setValues([row]);
+  else sheet.appendRow(row);
+  return Object.assign({}, tour, { answers: answers, files: files });
+}
+
+/** The Drive folder for tour photos and voice notes (made the first time). */
+function tourFolder_() {
+  const props = PropertiesService.getScriptProperties();
+  const id = props.getProperty("TOUR_FOLDER");
+  if (id) { try { return DriveApp.getFolderById(id); } catch (e) { /* deleted: make a new one */ } }
+  const folder = DriveApp.createFolder("Home Hunt – tour photos & voice notes");
+  props.setProperty("TOUR_FOLDER", folder.getId());
+  return folder;
+}
+
+/**
+ * Save one photo or voice note sent from the page (as base64 text) into the Drive folder.
+ * The file is set to "anyone with the link can view", so the family page can show it
+ * without anyone signing in to Google.
+ */
+function saveUpload_(body) {
+  const mime = String(body.mime || "").toLowerCase().split(";")[0];
+  const type = /^image\/(jpeg|png|webp|heic|heif)$/.test(mime) ? "photo"
+    : /^audio\/(webm|mp4|mpeg|ogg|aac|x-m4a|m4a|wav)$/.test(mime) ? "audio" : "";
+  if (!type) throw new Error("Only photos and voice notes can be uploaded.");
+  const data = String(body.data || "");
+  if (!data || data.length > 14e6) throw new Error("That file is too big (10 MB at most).");
+  const row = homeExists_(body.homeId);
+  const address = sheet_().getRange(row, col_(sheet_(), "address")).getValue();
+  const ext = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "audio/webm": "webm", "audio/mp4": "m4a", "audio/mpeg": "mp3", "audio/ogg": "ogg" }[mime] || mime.split("/")[1];
+  const stamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH.mm.ss");
+  const who = String(body.name || "").trim().slice(0, 40) || "Someone";
+  const blob = Utilities.newBlob(Utilities.base64Decode(data), mime, address + " – " + who + " – " + stamp + "." + ext);
+  const file = tourFolder_().createFile(blob);
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  return { id: file.getId(), type: type };
+}
+
+/* =====================================================================
+   New-listing radar: every morning, search Redfin for new homes that
+   match our must-haves, and put them in a "New today" box on the page.
+   ===================================================================== */
+
+const RADAR_TAB = "New listings";
+const RADAR_COLUMNS = ["url", "address", "city", "zip", "price", "beds", "baths", "sqft", "garage", "dom",
+  "ppsf", "hoa", "lat", "lng", "photoUrl", "openHouse", "foundAt", "status"];
+const RADAR_DAYS = 14;  // a match stays in "New today" for two weeks unless someone adds or skips it
+const UA = { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36" };
+
+/** Redfin's id for a town ("Clayton" -> 3340), looked up once and remembered. */
+function regionId_(town) {
+  const props = PropertiesService.getScriptProperties();
+  const key = "REGION_" + town.toUpperCase().replace(/\W+/g, "_");
+  const saved = props.getProperty(key);
+  if (saved) return saved;
+  const res = UrlFetchApp.fetch("https://www.redfin.com/stingray/do/location-autocomplete?v=2&location=" +
+    encodeURIComponent(town + ", NC"), { muteHttpExceptions: true, headers: UA });
+  // The answer starts with "{}&&" (a guard against old JSON tricks), then the JSON.
+  const m = res.getContentText().match(/"id":"2_(\d+)","type":"?2"?,"name":"([^"]+)"/);
+  if (!m || m[2].toLowerCase() !== town.toLowerCase()) return "";
+  props.setProperty(key, m[1]);
+  return m[1];
+}
+
+/** One town's matching homes for sale, from Redfin's "Download all" CSV. */
+function radarSearch_(town, s) {
+  const id = regionId_(town);
+  if (!id) { Logger.log("Radar: Redfin doesn't know the town %s", town); return null; }
+  const q = {
+    al: 1, market: "raleigh", region_id: id, region_type: 6, uipt: 1, status: 9, sf: "1,2,3,5,6,7", v: 8,
+    num_homes: 350, page_number: 1, max_price: s.radarMax, num_beds: s.beds, num_baths: s.baths,
+    min_listing_approx_size: s.sqft,
+  };
+  const url = "https://www.redfin.com/stingray/api/gis-csv?" + Object.keys(q).map((k) => k + "=" + encodeURIComponent(q[k])).join("&");
+  const res = UrlFetchApp.fetch(url, { muteHttpExceptions: true, headers: UA });
+  if (res.getResponseCode() !== 200) { Logger.log("Radar: %s answered %s", town, res.getResponseCode()); return null; }
+  const rows = Utilities.parseCsv(res.getContentText()).filter((r) => r.length > 10);
+  const head = rows.shift() || [];
+  const at = (name) => head.findIndex((h) => h.indexOf(name) === 0);
+  const c = { url: at("URL"), address: at("ADDRESS"), city: at("CITY"), zip: at("ZIP"), price: at("PRICE"),
+    beds: at("BEDS"), baths: at("BATHS"), sqft: at("SQUARE FEET"), dom: at("DAYS ON MARKET"), ppsf: at("$/SQUARE FEET"),
+    hoa: at("HOA"), status: at("STATUS"), oh: at("NEXT OPEN HOUSE START"), lat: at("LATITUDE"), lng: at("LONGITUDE"), type: at("PROPERTY TYPE") };
+  const n = (v) => (v === "" || v == null || isNaN(Number(v)) ? null : Number(v));
+  return rows.map((r) => ({
+    url: r[c.url], address: r[c.address], city: r[c.city], zip: r[c.zip], price: n(r[c.price]),
+    beds: n(r[c.beds]), baths: n(r[c.baths]), sqft: n(r[c.sqft]), dom: n(r[c.dom]), ppsf: n(r[c.ppsf]),
+    hoa: n(r[c.hoa]), status: r[c.status], type: r[c.type], lat: n(r[c.lat]), lng: n(r[c.lng]),
+    openHouse: r[c.oh] ? new Date(r[c.oh]).getTime() || "" : "",
+  })).filter((h) => REDFIN_URL.test(h.url) && /single family/i.test(h.type || "Single Family"));
+}
+
+const homeNum_ = (url) => (String(url).match(/\/home\/(\d+)/) || [])[1] || "";
+
+/**
+ * The radar itself. Returns the homes that are new this morning (for the email).
+ * The first run only records what's already for sale, so the box doesn't fill with
+ * hundreds of old listings: only homes listed in the last 3 days show up as new.
+ */
+function radarCheck_() {
+  const s = settings_();
+  // 1) Ask Redfin about every town (slow part, no lock).
+  const found = [];
+  let townsRead = 0;
+  splitList_(s.towns).forEach((town) => {
+    try { const list = radarSearch_(town, s); if (list) { townsRead++; found.push.apply(found, list); } }
+    catch (e) { Logger.log("Radar: %s failed: %s", town, e.message); }
+    Utilities.sleep(500);
+  });
+  if (!townsRead) return [];
+
+  // 2) The typical $ per square foot and days on market in each town (for "might negotiate").
+  const median = (xs) => { const a = xs.filter((x) => x > 0).sort((p, q) => p - q); return a.length ? a[Math.floor(a.length / 2)] : null; };
+  const market = {};
+  found.forEach((h) => { (market[h.city] = market[h.city] || { p: [], d: [] }); market[h.city].p.push(h.ppsf); market[h.city].d.push(h.dom); });
+  Object.keys(market).forEach((city) => {
+    market[city] = { ppsf: median(market[city].p), dom: median(market[city].d), count: market[city].p.length };
+  });
+  PropertiesService.getScriptProperties().setProperty("MARKET", JSON.stringify(market));
+
+  // 3) Compare with what we've seen before and with our own list.
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  const fresh = [];
+  try {
+    const sheet = tab_(RADAR_TAB, RADAR_COLUMNS, "#e9f8ee");
+    const old = readTab_(RADAR_TAB, RADAR_COLUMNS);
+    const baseline = old.length === 0;
+    const byNum = {};
+    old.forEach((r) => { byNum[homeNum_(r.url)] = r; });
+    const ours = {};
+    readHomes_().forEach((h) => { ours[homeNum_(h.redfinUrl)] = true; ours[(h.address.toLowerCase().replace(/\W/g, "").slice(0, 8)) + h.zip] = true; });
+    const now = new Date().toISOString();
+    const seenToday = {};
+
+    found.forEach((h) => {
+      const num = homeNum_(h.url);
+      if (!num || seenToday[num]) return;
+      seenToday[num] = true;
+      const prev = byNum[num];
+      if (prev) { // already known: keep the numbers current
+        Object.assign(prev, { price: h.price, dom: h.dom, ppsf: h.ppsf, openHouse: h.openHouse });
+        if (prev.status === "gone") prev.status = "seen";
+        return;
+      }
+      if (ours[num] || ours[h.address.toLowerCase().replace(/\W/g, "").slice(0, 8) + h.zip]) return;
+      const row = Object.assign({}, h, { garage: "", photoUrl: "", foundAt: now,
+        status: baseline && !(h.dom !== null && h.dom <= 3) ? "seen" : "new" });
+      byNum[num] = row;
+      if (row.status === "new") fresh.push(row);
+    });
+    // New matches that disappeared from Redfin's results (sold, pending, price went up…)
+    Object.keys(byNum).forEach((num) => { if (byNum[num].status === "new" && !seenToday[num]) byNum[num].status = "gone"; });
+
+    // 4) Look at each brand-new match's listing for the photo and the garage (at most 12 a day).
+    fresh.slice(0, 12).forEach((row) => {
+      try {
+        const info = redfinLookup_(row.url);
+        row.photoUrl = info.photoUrl || "";
+        row.garage = info.garage == null ? "" : info.garage;
+        if (info.garage !== null && info.garage < s.garage) row.status = "small garage";
+      } catch (e) { /* keep it without a photo */ }
+      Utilities.sleep(400);
+    });
+
+    const all = Object.keys(byNum).map((k) => byNum[k]);
+    sheet.getRange(2, 1, Math.max(sheet.getLastRow() - 1, 1), RADAR_COLUMNS.length).clearContent();
+    if (all.length) sheet.getRange(2, 1, all.length, RADAR_COLUMNS.length)
+      .setValues(all.map((r) => RADAR_COLUMNS.map((k) => (r[k] == null ? "" : String(r[k])))));
+    clearListCache_();
+  } finally {
+    lock.releaseLock();
+  }
+  const kept = fresh.filter((r) => r.status === "new");
+  Logger.log("Radar: %s towns, %s matching homes, %s new.", townsRead, found.length, kept.length);
+  return kept;
+}
+
+/** The matches the page shows in its "New today" box. */
+function radarForPage_() {
+  const cutoff = Date.now() - RADAR_DAYS * 864e5;
+  return readTab_(RADAR_TAB, RADAR_COLUMNS)
+    .filter((r) => r.status === "new" && new Date(r.foundAt).getTime() > cutoff)
+    .sort((a, b) => new Date(b.foundAt) - new Date(a.foundAt) || Number(a.dom) - Number(b.dom))
+    .slice(0, 20)
+    .map((r) => {
+      const o = {};
+      RADAR_COLUMNS.forEach((k) => {
+        o[k] = ["price", "beds", "baths", "sqft", "garage", "dom", "ppsf", "hoa", "lat", "lng", "openHouse"].indexOf(k) >= 0
+          ? (r[k] === "" ? null : Number(r[k])) : r[k];
+      });
+      return o;
+    });
+}
+
+/** "Not for us" on the page, or "added" once it's on our list. */
+function decideRadar_(url, decision) {
+  const status = { added: "added", skip: "skipped", "new": "new" }[decision] || "skipped"; // "new" = undo a skip
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(RADAR_TAB);
+  if (!sheet || sheet.getLastRow() < 2) return null;
+  const num = homeNum_(url);
+  const urls = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues().flat();
+  const i = urls.findIndex((u) => homeNum_(u) === num);
+  if (!num || i < 0) return null;
+  sheet.getRange(i + 2, RADAR_COLUMNS.indexOf("status") + 1).setValue(status);
+  return status;
+}
+
+/* ---------- Drive times (Google Maps, built into Apps Script) ---------- */
+
+/**
+ * Minutes from each home to the places in Settings ("Drive times to"), saved as JSON in
+ * the drives column. Only recalculated when a home is new or the list of places changes.
+ */
+function updateDrives_() {
+  const places = places_(settings_().places);
+  const key = places.map((p) => p.label + "=" + p.address).join(";");
+  const sheet = sheet_();
+  const values = sheet.getDataRange().getValues();
+  const header = values[0];
+  const c = (k) => header.indexOf(k);
+  let lookups = 0, changed = false;
+  for (let r = 1; r < values.length && lookups < 80; r++) {
+    const row = values[r];
+    const removed = row[c("removed")] === true || String(row[c("removed")]).toUpperCase() === "TRUE";
+    if (!Number(row[c("rank")]) || removed) continue;
+    if (parseJson_(row[c("drives")], {}).key === key) continue;
+    const origin = row[c("lat")] && row[c("lng")] ? row[c("lat")] + "," + row[c("lng")]
+      : row[c("address")] + ", " + row[c("city")] + ", NC " + row[c("zip")];
+    const mins = {};
+    places.forEach((p) => {
+      try {
+        lookups++;
+        const d = Maps.newDirectionFinder().setOrigin(origin).setDestination(p.address)
+          .setMode(Maps.DirectionFinder.Mode.DRIVING).getDirections();
+        const leg = d.routes && d.routes[0] && d.routes[0].legs[0];
+        if (leg) mins[p.label] = Math.round(leg.duration.value / 60);
+      } catch (e) { Logger.log("Drive time failed: %s", e.message); }
+    });
+    row[c("drives")] = JSON.stringify({ key: key, mins: mins });
+    changed = true;
+  }
+  if (changed) {
+    const col = c("drives");
+    sheet.getRange(2, col + 1, values.length - 1, 1).setValues(values.slice(1).map((row) => [row[col]]));
+    clearListCache_();
+  }
+  Logger.log("Drive times: %s lookups.", lookups);
+}
+
+/* =====================================================================
+   Morning email: a short summary to the family when something changed.
+   ===================================================================== */
+
+function digestRecipients_() {
+  const me = Session.getEffectiveUser().getEmail();
+  const others = splitList_(settings_().emailTo).filter((x) => /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(x));
+  return [me].concat(others).filter((x, i, a) => x && a.map((y) => y.toLowerCase()).indexOf(x.toLowerCase()) === i);
+}
+
+/**
+ * Build the email. changes = rows from refreshPrices(), fresh = new radar matches.
+ * Open houses are added on Thursdays and Fridays (a weekend preview), or whenever
+ * there's other news. Returns null when there's nothing worth an email.
+ */
+function buildDigest_(changes, fresh) {
+  const s = settings_();
+  const money = (n) => "$" + Number(n).toLocaleString("en-US");
+  const tz = Session.getScriptTimeZone();
+  const day = Number(Utilities.formatDate(new Date(), tz, "u")); // 1 = Monday … 7 = Sunday
+  const drops = changes.filter((c) => c[2] === "Price" && c[5] < 0);
+  const rises = changes.filter((c) => c[2] === "Price" && c[5] > 0);
+  const status = changes.filter((c) => c[2] === "Status");
+
+  const soon = [];
+  readHomes_().filter((h) => h.rank && !h.removed).forEach((h) => {
+    parseJson_(h.openHouses, []).forEach((o) => {
+      if (o.start > Date.now() && o.start < Date.now() + 4 * 864e5) soon.push({ h: h, o: o });
+    });
+  });
+  soon.sort((a, b) => a.o.start - b.o.start);
+
+  const news = drops.length + rises.length + status.length + fresh.length;
+  if (!news && !(soon.length && (day === 4 || day === 5))) return null;
+
+  const li = (html) => `<li style="margin:0 0 8px">${html}</li>`;
+  const section = (title, color, items) => items.length
+    ? `<h3 style="margin:18px 0 6px;color:${color};font-family:Georgia,serif">${title}</h3><ul style="padding-left:18px;margin:0">${items.join("")}</ul>` : "";
+  const link = (url, text) => `<a href="${url}" style="color:#1f4e8c">${text}</a>`;
+  const when = (ms) => Utilities.formatDate(new Date(ms), tz, "EEE MMM d, h:mm a");
+
+  const body = [
+    section("▼ Price drops", "#17803d", drops.map((c) => li(`<b>${c[1]}</b>: ${money(c[3])} → <b>${money(c[4])}</b> (down ${money(-c[5])}) · ${link(c[6], "Redfin")}`))),
+    section("▲ Price went up", "#b45309", rises.map((c) => li(`<b>${c[1]}</b>: ${money(c[3])} → ${money(c[4])} · ${link(c[6], "Redfin")}`))),
+    section("Status changes", "#12355f", status.map((c) => li(`<b>${c[1]}</b> is now <b>${c[4]}</b> (was ${c[3]}) · ${link(c[6], "Redfin")}`))),
+    section("🆕 New homes that match", "#12355f", fresh.slice(0, 15).map((h) => li(
+      `<b>${h.address}, ${h.city}</b>: ${money(h.price)} · ${h.beds} bed · ${h.baths} bath · ${Number(h.sqft).toLocaleString("en-US")} sq ft` +
+      `${h.garage !== "" && h.garage != null ? " · " + h.garage + "-car garage" : ""} · ${link(h.url, "Redfin")}`))),
+    section("Open houses coming up", "#12355f", soon.map((x) => li(`<b>${when(x.o.start)}</b> – ${Utilities.formatDate(new Date(x.o.end), tz, "h:mm a")}: ${x.h.address}, ${x.h.city}`))),
+  ].join("");
+
+  const parts = [];
+  if (drops.length) parts.push(drops.length === 1 ? "price drop on " + drops[0][1].split(",")[0] : drops.length + " price drops");
+  if (fresh.length) parts.push(fresh.length + (fresh.length === 1 ? " new match" : " new matches"));
+  if (status.length) parts.push(status.length === 1 ? status[0][1].split(",")[0] + " is " + status[0][4].toLowerCase() : status.length + " status changes");
+  if (rises.length) parts.push(rises.length + (rises.length === 1 ? " price increase" : " price increases"));
+  if (!parts.length) parts.push(soon.length + (soon.length === 1 ? " open house" : " open houses") + " this weekend");
+
+  const html = `<div style="font-family:Nunito,Segoe UI,Arial,sans-serif;font-size:16px;color:#16243a;max-width:620px">
+    <h2 style="font-family:Georgia,serif;color:#12355f;margin:0 0 6px">Good morning! Here's what changed in our home hunt.</h2>
+    ${body}
+    <p style="margin:22px 0 0"><a href="${s.pageUrl}" style="display:inline-block;background:#12355f;color:#fff;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:10px">Open our home hunt page</a></p>
+    <p style="color:#5a6b80;font-size:13px;margin-top:18px">This email is sent by our home hunt page's morning check, only on days something changes.</p></div>`;
+  return { subject: "🏡 Home hunt: " + parts.join(", "), html: html };
+}
+
+function sendDigest_(changes, fresh) {
+  const mail = buildDigest_(changes || [], fresh || []);
+  if (!mail) { Logger.log("Nothing new today, so no email."); return false; }
+  MailApp.sendEmail({ to: digestRecipients_().join(","), subject: mail.subject, htmlBody: mail.html, name: "Our Home Hunt" });
+  Logger.log("Sent: %s", mail.subject);
+  return true;
+}
+
+/** Run from the editor to see the email: sends a sample only to you (the Sheet's owner). */
+function sendTestEmail() {
+  const homes = readHomes_().filter((h) => h.rank && !h.removed);
+  const h = homes[0];
+  const sample = [[new Date().toISOString(), h.address + ", " + h.city, "Price", h.price + 5000, h.price, -5000, h.redfinUrl]];
+  const fresh = radarForPage_().slice(0, 2);
+  const mail = buildDigest_(sample, fresh);
+  MailApp.sendEmail({ to: Session.getEffectiveUser().getEmail(), subject: "[TEST] " + mail.subject, htmlBody: mail.html, name: "Our Home Hunt" });
+  Logger.log("Test email sent to %s. Real emails go to: %s", Session.getEffectiveUser().getEmail(), digestRecipients_().join(", "));
+}
+
+/* =====================================================================
+   The morning job and its schedule.
+   ===================================================================== */
+
+/** Everything the page needs fresh each morning. Each step is separate, so one failing doesn't stop the rest. */
+function morningCheck() {
+  const step = (name, fn, fallback) => { try { return fn(); } catch (e) { Logger.log("%s failed: %s", name, e.message); return fallback; } };
+  const changes = step("Price check", refreshPrices, []);
+  const fresh = step("Radar", radarCheck_, []);
+  step("Drive times", updateDrives_);
+  step("Email", () => sendDigest_(changes, fresh));
+  clearListCache_();
+}
+
+/** Run once from the editor: replaces the old daily price check with morningCheck at 6–7 am. */
+function setupTriggers() {
+  ScriptApp.getProjectTriggers()
+    .filter((t) => ["refreshPrices", "morningCheck"].indexOf(t.getHandlerFunction()) >= 0)
+    .forEach((t) => ScriptApp.deleteTrigger(t));
+  ScriptApp.newTrigger("morningCheck").timeBased().everyDays(1).atHour(6).create();
+  settingsSheet_();
+  Logger.log("morningCheck will run every day between 6 and 7 am (%s).", Session.getScriptTimeZone());
 }

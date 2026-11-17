@@ -6,6 +6,13 @@
   <title>Rachel, Amin &amp; Aurora's Home Hunt</title>
   <meta name="description" content="Our family's favorite homes in North Carolina, with our top choice first.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 48 48%27%3E%3Cpath d=%27M6 22 24 7l18 15M11 20v20h26V20%27 fill=%27none%27 stroke=%27%2312355f%27 stroke-width=%274%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="images/icon-180.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Home Hunt">
+  <meta name="theme-color" content="#12355f">
+  <script>try { if (localStorage.getItem("homehunt.big") === "1") document.documentElement.classList.add("big"); } catch {}</script>
   <!-- Open the connections to Google's script servers early: the list comes from there. -->
   <link rel="preconnect" href="https://script.google.com" crossorigin>
   <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
@@ -302,7 +309,8 @@
       .photo { width: auto; }
       .photo img { width: 104px; height: 78px; }
       .links { width: 100%; display: flex !important; gap: 8px; padding-bottom: 8px !important; }
-      .links .btn, .links .btn.remove { flex: 1; margin: 0; padding: 7px 8px; font-size: .9rem; }
+      .links .btn, .links .btn.remove { flex: 1 1 calc(50% - 8px); margin: 0; padding: 7px 8px; font-size: .9rem; }
+      .links { flex-wrap: wrap; }
     }
     @media print {
       header { background: none !important; color: var(--ink); }
@@ -465,6 +473,110 @@
       .chg small { display: inline; margin-left: 6px; }
     }
     @media print { .price-news { display: none; } }
+    .news.st { background: #f2f6fb; border-color: var(--navy); }
+    .news.st .tagicon { background: var(--navy); }
+
+    /* =====================================================================
+       Search helpers: radar, open houses, votes, must-haves, monthly cost,
+       negotiate badge, drive times, tour notes, map, bigger text.
+       ===================================================================== */
+    .tools { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .tool { font: inherit; font-size: .9rem; font-weight: 800; color: var(--navy); background: rgb(255 255 255 / .9); border: 1px solid var(--rule); border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+    .tool[aria-pressed="true"] { background: var(--navy); color: #fff; border-color: var(--navy); }
+    html.big { font-size: 19px; }
+    html.big body { font-size: 24px; }
+
+    .panel { margin: 0 0 26px; }
+    .panel h2 { margin: 0 0 4px; font-family: var(--serif); color: var(--navy); font-size: 1.4rem; }
+    .panel .sub { margin: 0 0 12px; color: var(--muted); font-size: .95rem; }
+    .cards { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+    .card { display: grid; grid-template-columns: 104px 1fr; gap: 6px 12px; background: var(--paper); border: 1px solid var(--rule); border-radius: 14px; padding: 10px; box-shadow: 0 6px 18px rgb(18 53 95 / .06); }
+    .card img, .card .nophoto { width: 104px; height: 80px; object-fit: cover; border-radius: 10px; background: var(--line); display: grid; place-items: center; font-size: 1.8rem; grid-row: span 2; }
+    .card strong { color: var(--navy); display: block; font-size: 1rem; line-height: 1.25; }
+    .card > div, .card > .meta { line-height: 1.3; }
+    .card .meta { display: block; font-size: .85rem; color: var(--muted); line-height: 1.35; margin-top: 2px; }
+    .card .meta b { color: var(--ink); }
+    .card .fresh-tag { display: inline-block; background: #17803d; color: #fff; font-size: .7rem; font-weight: 900; padding: 1px 7px; border-radius: 999px; margin-right: 4px; vertical-align: 1px; }
+    .card .acts { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+    .card .acts .btn { margin: 0; padding: 7px 6px; font-size: .85rem; line-height: 1.2; cursor: pointer; font-family: inherit; display: grid; place-items: center; }
+    .more-cards { margin-top: 10px; }
+
+    .oh-day { margin: 0 0 12px; background: var(--paper); border: 1px solid var(--rule); border-radius: 14px; padding: 10px 14px; }
+    .oh-day h3 { margin: 0 0 6px; font-size: 1.05rem; color: var(--navy); display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .oh-day h3 a { font-size: .85rem; font-family: var(--font); }
+    .oh-day ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+    .oh-day li { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; font-size: .95rem; }
+    .oh-day time { font-weight: 900; min-width: 9.5em; }
+    .oh-day .cal { font-size: .85rem; font-weight: 800; }
+    .oh-tag { display: inline-block; margin-top: 4px; font-size: .75rem; font-weight: 800; background: #e8f1fd; color: var(--navy); padding: 2px 8px; border-radius: 8px; }
+
+    .nego { display: inline-block; margin-top: 5px; font-size: .75rem; font-weight: 900; background: #fff3c4; color: #7a5600; border: 1px solid #ecd27a; padding: 2px 8px; border-radius: 8px; cursor: help; }
+    .nego-why { display: block; font-size: .75rem; color: #7a5600; margin-top: 2px; }
+    .drives { display: block; margin-top: 4px; font-size: .78rem; color: var(--muted); }
+    .cost { display: block; margin-top: 4px; font: inherit; font-size: .8rem; font-weight: 800; color: var(--sky); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-decoration-color: var(--rule); text-underline-offset: 3px; white-space: nowrap; }
+    .musts { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 5px; }
+    .mh { font-size: .7rem; font-weight: 800; padding: 1px 6px; border-radius: 6px; white-space: nowrap; }
+    .mh.ok { background: #e6f4ea; color: #1d6b3a; }
+    .mh.no { background: #fde4e1; color: #a5322a; }
+    .mh.unk { background: #eef1f5; color: var(--muted); }
+
+    .family { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: .85rem; padding: 8px 0 4px 8px; margin-left: 52px; }
+    .family .score { font-weight: 900; color: #c0264b; }
+    .family .v { background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px; }
+    .family .v.me { border-color: #e8a3b3; }
+    .family .wait { color: var(--muted); }
+    .hearts { color: #d6335a; letter-spacing: 1px; }
+    .vote-btn, .tour-chip { font: inherit; font-size: .85rem; font-weight: 800; border-radius: 999px; padding: 2px 10px; cursor: pointer; }
+    .vote-btn { color: #c0264b; background: #fff0f3; border: 1px solid #f3bccb; }
+    .tour-chip { color: #1d6b3a; background: #eef8f1; border: 1px solid #b9dfc6; }
+    @media (max-width: 1100px) { .family { margin-left: 0; padding-left: 0; } }
+
+    .pick { display: flex; flex-wrap: wrap; gap: 8px; }
+    .pick button { font: inherit; font-size: 1.05rem; font-weight: 800; padding: 10px 16px; border-radius: 12px; border: 1px solid var(--rule); background: #fff; color: var(--navy); cursor: pointer; }
+    .pick button[aria-pressed="true"] { background: var(--navy); color: #fff; border-color: var(--navy); }
+    .heart-pick { display: flex; gap: 6px; justify-content: center; }
+    .heart-pick button { font-size: 2.4rem; line-height: 1; background: none; border: 0; cursor: pointer; color: #e9c3cd; padding: 4px; }
+    .heart-pick button.on { color: #d6335a; }
+
+    .cost-lines { display: grid; gap: 0; }
+    .cost-lines div { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: 1rem; }
+    .cost-lines div b { font-variant-numeric: tabular-nums; }
+    .cost-lines div.total { font-size: 1.2rem; color: var(--navy); border-bottom: 0; }
+    .cost-lines small { color: var(--muted); }
+    .cost-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .cost-inputs label { display: grid; gap: 4px; font-size: .9rem; }
+    .cost-inputs input { font-size: 1.1rem; padding: 8px 10px; width: 100%; }
+
+    .q { display: grid; gap: 6px; padding: 8px 0; border-bottom: 1px dashed var(--line); }
+    .q span { font-weight: 700; font-size: 1rem; }
+    .yn { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .yn button { font: inherit; font-size: .95rem; font-weight: 800; padding: 8px 4px; border-radius: 10px; border: 1px solid var(--rule); background: #fff; cursor: pointer; color: var(--ink); }
+    .yn button[aria-pressed="true"][data-v="yes"] { background: #17803d; color: #fff; border-color: #17803d; }
+    .yn button[aria-pressed="true"][data-v="no"] { background: #a5322a; color: #fff; border-color: #a5322a; }
+    .yn button[aria-pressed="true"][data-v="unsure"] { background: #c98a00; color: #fff; border-color: #c98a00; }
+    .media-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .media-row .btn { margin: 0; cursor: pointer; font-family: inherit; font-size: 1rem; padding: 12px 8px; }
+    .media-row .btn.rec { background: #a5322a; border-color: #a5322a; }
+    .thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 6px; }
+    .thumbs img, .thumbs .up { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; background: var(--line); display: grid; place-items: center; font-size: .75rem; color: var(--muted); }
+    .thumbs a { display: block; }
+    .audios { display: grid; gap: 6px; }
+    .audios audio { width: 100%; }
+    .answers { list-style: none; padding: 0; margin: 0; display: grid; gap: 4px; font-size: .95rem; }
+    .answers b { display: inline-block; min-width: 4.5em; }
+    .answers .yes b { color: #17803d; } .answers .no b { color: #a5322a; } .answers .unsure b { color: #a06d00; }
+    .tour-notes { white-space: pre-wrap; background: var(--stripe); border-radius: 10px; padding: 10px; }
+
+    #map-panel { margin: 0 0 18px; }
+    #map { height: min(460px, 65vh); border-radius: 14px; border: 1px solid var(--rule); background: #e8eef6; }
+    .pin { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: #fff; border: 2px solid var(--navy); color: var(--navy); font-weight: 900; font-size: 14px; box-shadow: 0 2px 6px rgb(0 0 0 / .3); }
+    .pin.first { background: var(--sun); border-color: #c99b2e; }
+    .pin.newpin { width: 16px; height: 16px; background: #17803d; border-color: #fff; }
+    .map-legend { font-size: .85rem; color: var(--muted); margin: 6px 0 0; }
+    .leaflet-popup-content { font: 15px/1.35 var(--font); }
+    .leaflet-popup-content img { width: 180px; height: 110px; object-fit: cover; border-radius: 8px; display: block; margin-bottom: 6px; }
+    .leaflet-popup-content button { font: inherit; font-weight: 800; color: var(--sky); background: none; border: 0; padding: 0; text-decoration: underline; cursor: pointer; }
+    .install-steps { margin: 0; padding-left: 1.3em; display: grid; gap: 6px; }
   </style>
 </head>
 <body>
@@ -473,12 +585,29 @@
       <h1>Rachel, Amin &amp; Aurora's Home Hunt</h1>
       <p>Our favorite homes</p>
       <span class="checked" id="status-note">Getting our list…</span>
+      <div class="tools">
+        <button type="button" class="tool" id="big-btn" aria-pressed="false">A+ Bigger text</button>
+        <button type="button" class="tool" id="install-btn" hidden>📲 Put it on my home screen</button>
+      </div>
     </div>
   </header>
 
   <main class="wrap">
 
     <div class="price-news" id="price-news" hidden></div>
+
+    <section class="panel" id="radar" hidden aria-labelledby="radar-title">
+      <h2 id="radar-title">🆕 New homes that match</h2>
+      <p class="sub" id="radar-sub">Every morning we search Redfin for new listings that match what we need. Add the ones you like, or tap "Not for us".</p>
+      <ul class="cards" id="radar-list"></ul>
+      <button type="button" class="tool more-cards" id="radar-more" hidden></button>
+    </section>
+
+    <section class="panel" id="openhouses" hidden aria-labelledby="oh-title">
+      <h2 id="oh-title">🗓 Open houses coming up</h2>
+      <p class="sub">For homes on our list. Tap "Add to calendar" to save one, or "Plan the route" to see that day's stops on a map.</p>
+      <div id="oh-list"></div>
+    </section>
     <section class="overview" aria-labelledby="top5-title">
       <h2 id="top5-title">Top 5 Homes</h2>
       <p class="drag-tip">Press and hold any home, here or in the list below, then drag it up or down to change the order. You can also tap ▲ ▼.</p>
@@ -487,7 +616,15 @@
 
     <div class="list-head">
       <h2>All our homes</h2>
-      <button type="button" class="add-btn" id="add-btn">＋ Add a home from Redfin</button>
+      <div class="tools" style="margin:0">
+        <button type="button" class="tool" id="map-btn" aria-pressed="false" aria-controls="map-panel">🗺 Show the map</button>
+        <button type="button" class="add-btn" id="add-btn">＋ Add a home from Redfin</button>
+      </div>
+    </div>
+
+    <div id="map-panel" hidden>
+      <div id="map" role="region" aria-label="Map of our homes"></div>
+      <p class="map-legend">Numbers are our ranking (gold is #1). Small green dots are new homes that match. Tap a pin for details.</p>
     </div>
 
     <table>
@@ -584,6 +721,80 @@
     </form>
   </dialog>
 
+
+  <dialog id="vote" aria-labelledby="vote-title">
+    <form id="vote-form">
+      <h2 id="vote-title">How much do you love it?</h2>
+      <p id="vote-home"></p>
+      <label>Who are you?</label>
+      <div class="pick" id="vote-who"></div>
+      <div class="heart-pick" id="vote-hearts" role="radiogroup" aria-label="Hearts"></div>
+      <p class="error" id="vote-error" role="alert"></p>
+      <div class="dialog-buttons">
+        <button type="submit" class="btn" id="vote-go">Save my vote</button>
+        <button type="button" class="btn light" id="vote-cancel">Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="cost" aria-labelledby="cost-title">
+    <form id="cost-form">
+      <h2 id="cost-title">Monthly cost</h2>
+      <p id="cost-home"></p>
+      <div class="cost-lines" id="cost-lines"></div>
+      <div class="cost-inputs">
+        <label>Down payment (%)<input id="cost-down" type="number" inputmode="decimal" min="0" max="100" step="0.5"></label>
+        <label>Mortgage rate (%)<input id="cost-rate" type="number" inputmode="decimal" min="0" max="20" step="0.125"></label>
+      </div>
+      <p class="sub" style="margin:0;font-size:.85rem;color:var(--muted)" id="cost-note"></p>
+      <p class="error" id="cost-error" role="alert"></p>
+      <div class="dialog-buttons">
+        <button type="submit" class="btn" id="cost-go">Use these numbers for everyone</button>
+        <button type="button" class="btn light" id="cost-cancel">Close</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="tour" aria-labelledby="tour-title">
+    <form id="tour-form">
+      <h2 id="tour-title">Tour notes</h2>
+      <p id="tour-home"></p>
+      <label for="tour-name">Your name</label>
+      <input id="tour-name" type="text" autocomplete="given-name" placeholder="Rachel">
+      <div id="tour-qs"></div>
+      <label for="tour-notes">Anything else?</label>
+      <textarea id="tour-notes" rows="4" maxlength="3000" placeholder="The kitchen is bigger than it looks, the street was busy at 5pm…"></textarea>
+      <div class="media-row">
+        <label class="btn light" for="tour-photo" style="margin:0;cursor:pointer">📷 Add photos</label>
+        <button type="button" class="btn light" id="tour-rec">🎤 Voice note</button>
+      </div>
+      <input id="tour-photo" type="file" accept="image/*" multiple hidden>
+      <div class="thumbs" id="tour-thumbs"></div>
+      <div class="audios" id="tour-audios"></div>
+      <p class="error" id="tour-error" role="alert"></p>
+      <div class="dialog-buttons">
+        <button type="submit" class="btn" id="tour-go">Save tour notes</button>
+        <button type="button" class="btn light" id="tour-cancel">Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="tourview" aria-labelledby="tv-title">
+    <form method="dialog">
+      <h2 id="tv-title">Tour notes</h2>
+      <div id="tv-body" style="display:grid;gap:12px"></div>
+      <div class="dialog-buttons"><button class="btn light">Close</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="install" aria-labelledby="install-title">
+    <form method="dialog">
+      <h2 id="install-title">Put our page on your home screen</h2>
+      <p>Then it opens with one tap, like an app.</p>
+      <div id="install-body"></div>
+      <div class="dialog-buttons"><button class="btn" id="install-go" type="button" hidden>Add it now</button><button class="btn light">Close</button></div>
+    </form>
+  </dialog>
   <div class="toast" id="toast" role="status" hidden><span id="toast-text"></span><button type="button" id="toast-undo">Undo</button></div>
 
   <footer class="wrap">
@@ -608,6 +819,13 @@
     let homes = [];     // every home from the Sheet
     let comments = [];  // every comment from the Comments tab
     let safetyByZip = {}; // CrimeGrade numbers for each zip code, from the Sheet's script
+    let votes = [];     // { homeId, name, hearts } from the Votes tab
+    let tours = [];     // { id, homeId, name, at, answers, notes, files } from the Tours tab
+    let radar = [];     // new homes that match, from the morning search
+    let market = {};    // { Clayton: { ppsf, dom, count } } typical numbers in each town
+    // The family's settings (the Settings tab in the Sheet). These are fallbacks until the list loads.
+    let S = { budget: 400000, beds: 3, baths: 2.5, sqft: 2250, garage: 2, downPct: 20, rate: 6.5,
+      family: ["Amin", "Aurora", "Rachel", "David"], places: [] };
 
     /** The home's area safety: CrimeGrade's zip-code grade if we have it, otherwise the grade saved in the Sheet. */
     const crimeGradeUrl = (zip) => `https://crimegrade.org/safest-places-in-${encodeURIComponent(zip)}/`;
@@ -662,9 +880,9 @@
         <td class="rank grab"><b>${i + 1}</b>${i === 0 ? '<span class="badge">★ Top choice</span>' : ""}
           <span class="arrows"><button type="button" class="arrow" data-step="-1" data-id="${esc(h.id)}" aria-label="Move ${esc(h.address)} up"${i === 0 ? " disabled" : ""}>▲</button><button type="button" class="arrow" data-step="1" data-id="${esc(h.id)}" aria-label="Move ${esc(h.address)} down"${i === total - 1 ? " disabled" : ""}>▼</button></span></td>
         <td class="photo grab">${photo ? `<img src="${esc(photo)}" alt="Front of ${esc(h.address)}" loading="${i < 3 ? "eager" : "lazy"}">` : ""}</td>
-        <td class="home grab" data-label="Home"><strong>${esc(h.address)}</strong><span>${esc(h.city)}, NC</span>${tag ? `<span class="status">${tag}</span>` : ""}</td>
-        <td class="price num${pc ? " changed " + pc.dir : ""}" data-label="Price">${pc ? `<s class="was">${money(h.lastPrice)}</s>` : ""}<strong>${h.price ? money(h.price) : "—"}</strong>${change}${drop}</td>
-        <td class="num size" data-label="Size"><i>${h.beds ?? "?"} bed · ${h.baths ?? "?"} bath</i>${h.sqft ? `<i>${Number(h.sqft).toLocaleString("en-US")} sq ft</i>` : ""}${h.yearBuilt ? `<i class="yr">Built ${h.yearBuilt}</i>` : ""}</td>
+        <td class="home grab" data-label="Home"><strong>${esc(h.address)}</strong><span>${esc(h.city)}, NC</span>${tag ? `<span class="status">${tag}</span>` : ""}${negoHtml(h)}${ohTag(h)}${drivesHtml(h)}</td>
+        <td class="price num${pc ? " changed " + pc.dir : ""}" data-label="Price">${pc ? `<s class="was">${money(h.lastPrice)}</s>` : ""}<strong>${h.price ? money(h.price) : "—"}</strong>${change}${drop}${h.price ? `<button type="button" class="cost" data-cost="${esc(h.id)}">≈ ${money(monthly(h).total)}/mo</button>` : ""}</td>
+        <td class="num size" data-label="Size"><i>${h.beds ?? "?"} bed · ${h.baths ?? "?"} bath</i>${h.sqft ? `<i>${Number(h.sqft).toLocaleString("en-US")} sq ft</i>` : ""}${h.yearBuilt ? `<i class="yr">Built ${h.yearBuilt}</i>` : ""}${mustsHtml(h)}</td>
         <td class="safety" data-label="Safety">
           <b class="${grade.startsWith("A") ? "" : "mid"}">${esc(grade)}</b>
           ${sf.score ? `<span class="score">${sf.score} / 1000</span>` : ""}
@@ -680,11 +898,12 @@
         </td>
         <td class="links">
           ${safeUrl(h.redfinUrl) ? `<a class="btn" href="${esc(h.redfinUrl)}" target="_blank" rel="noopener">Open in Redfin</a>` : ""}
+          <button type="button" class="btn light" data-tour="${esc(h.id)}" style="cursor:pointer;font-family:inherit">📝 Tour notes</button>
           <a class="btn light" href="${esc(mapLink(h))}" target="_blank" rel="noopener">Map</a>
           <button type="button" class="btn remove" data-remove="${esc(h.id)}">Remove</button>
         </td>
       </tr>
-      <tr class="c-row${i % 2 ? " alt" : ""}" data-for="${esc(h.id)}"><td colspan="8"><div class="comments">${commentsHtml(h)}</div></td></tr>`;
+      <tr class="c-row${i % 2 ? " alt" : ""}" data-for="${esc(h.id)}"><td colspan="8"><div class="family">${familyHtml(h)}</div><div class="comments">${commentsHtml(h)}</div></td></tr>`;
     }
 
     const shortDate = (iso) => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleDateString("en-US", { month: "short", day: "numeric" }); };
@@ -716,7 +935,12 @@
     /** The banner at the top: one line per home whose price changed this week. Tap one to jump to it. */
     function priceNewsHtml(list) {
       const news = list.filter((h) => priceChange(h)?.fresh).sort((a, b) => new Date(b.priceChangedAt) - new Date(a.priceChangedAt));
-      return news.map((h) => {
+      // Status changes this week too ("is now Sale pending", "is back on the market").
+      const words = { Pending: "is now <b>sale pending</b>", Sold: "has <b>sold</b>", "Off market": "is <b>off the market</b>", Active: "is <b>back on the market</b>" };
+      const status = list.filter((h) => words[h.status] && h.statusChangedAt && Date.now() - new Date(h.statusChangedAt) < FRESH_DAYS * 864e5)
+        .map((h) => `<button type="button" class="news st" data-jump="${esc(h.id)}"><span class="tagicon" aria-hidden="true">!</span>
+          <span><b>Heads up:</b> ${esc(h.address)} ${words[h.status]}.</span><span class="go">See it ›</span></button>`).join("");
+      return status + news.map((h) => {
         const pc = priceChange(h);
         return `<button type="button" class="news ${pc.dir}" data-jump="${esc(h.id)}">
           <span class="tagicon" aria-hidden="true">${pc.dir === "down" ? "▼" : "▲"}</span>
@@ -733,7 +957,7 @@
         ${photo ? `<img src="${esc(photo)}" alt="Front of ${esc(h.address)}">` : "<span></span>"}
         <strong>${esc(h.address)}</strong>
         <span class="p">${h.price ? money(h.price) : ""}${priceChange(h) ? ` <b class="chip ${priceChange(h).dir}${priceChange(h).fresh ? " fresh" : ""}">${priceChange(h).dir === "down" ? "▼" : "▲"} ${money(priceChange(h).amount)}</b>` : ""}</span>
-        <span class="t">${esc(h.city)} · ${h.beds ?? "?"} bed · Safety ${esc(safetyOf(h).grade || "?")}</span>
+        <span class="t">${esc(h.city)} · ${h.beds ?? "?"} bed · Safety ${esc(safetyOf(h).grade || "?")}${voteSummary(h).count ? ` · <span class="hearts">♥</span> ${voteSummary(h).avg}` : ""}</span>
       </div></li>`;
     }
 
@@ -750,6 +974,9 @@
       $("rows").innerHTML = list.map(rowHtml).join("");
       $("price-news").innerHTML = priceNewsHtml(list);
       $("price-news").hidden = !$("price-news").innerHTML;
+      renderRadar();
+      renderOpenHouses(list);
+      if (mapState.map) drawPins();
       $("empty").hidden = list.length > 0;
       const gone = removedList();
       document.querySelectorAll(".why .clamp").forEach((p) => { p.nextElementSibling.hidden = p.scrollHeight <= p.clientHeight + 2; });
@@ -790,13 +1017,18 @@
       homes = data.homes;
       comments = data.comments || [];
       safetyByZip = data.safety || {};
+      votes = data.votes || [];
+      tours = data.tours || [];
+      radar = data.radar || [];
+      market = data.market || {};
+      if (data.settings) S = { ...S, ...data.settings };
       $("price-note").textContent = data.pricesChecked ? ` Last price check: ${shortDate(data.pricesChecked)}.` : "";
       shownJson = json;
       render();
     }
 
     // Don't redraw under someone's finger: wait until they finish dragging or close a box.
-    const busy = () => drag || rowDrag || press || rowPress || document.querySelector("dialog[open]");
+    const busy = () => drag || rowDrag || press || rowPress || document.querySelector("dialog[open]") || mapState.dragging;
 
     async function load() {
       const saved = store.get(LIST_KEY);
@@ -1297,13 +1529,21 @@
       const more = e.target.closest("[data-more]");
       if (more) { const open = more.previousElementSibling.classList.toggle("open"); more.textContent = open ? "Show less" : "Show more"; }
       const jump = e.target.closest("[data-jump]");
-      if (jump) {
-        const row = document.getElementById("home-" + jump.dataset.jump);
-        if (row) {
-          row.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" });
-          row.classList.remove("moved"); void row.offsetWidth; row.classList.add("moved"); // replay the highlight flash
-        }
-      }
+      if (jump) jumpTo(jump.dataset.jump);
+      const vb = e.target.closest("[data-vote]");
+      if (vb) openVote(vb.dataset.vote);
+      const cb = e.target.closest("[data-cost]");
+      if (cb) openCost(cb.dataset.cost);
+      const tb = e.target.closest("[data-tour]");
+      if (tb) openTour(tb.dataset.tour);
+      const tv = e.target.closest("[data-tourview]");
+      if (tv) viewTour(tv.dataset.tourview);
+      const ra = e.target.closest("[data-radar-add]");
+      if (ra) addFromRadar(ra.dataset.radarAdd);
+      const rs = e.target.closest("[data-radar-skip]");
+      if (rs) skipRadar(rs.dataset.radarSkip);
+      const pin = e.target.closest("[data-pinjump]");
+      if (pin) jumpTo(pin.dataset.pinjump);
       const cm = e.target.closest("[data-comment]");
       if (cm) openComment(cm.dataset.comment);
       const rm = e.target.closest("[data-remove]");
@@ -1311,6 +1551,517 @@
       const back = e.target.closest("[data-restore]");
       if (back) restoreHome(back.dataset.restore);
     });
+
+    /* =====================================================================
+       Search helpers
+       ===================================================================== */
+    const me = () => store.get("homehunt.name");
+    const jumpTo = (id) => {
+      const row = document.getElementById("home-" + id);
+      if (!row) return;
+      row.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" });
+      row.classList.remove("moved"); void row.offsetWidth; row.classList.add("moved"); // replay the highlight flash
+    };
+    const parse = (text, fallback) => { try { return text ? (typeof text === "string" ? JSON.parse(text) : text) : fallback; } catch { return fallback; } };
+    const dayName = (ms) => new Date(ms).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+    const clock = (ms) => new Date(ms).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }).replace(":00", "");
+
+    /* ---------- Monthly cost: loan payment + taxes + insurance + HOA (+ PMI under 20% down) ---------- */
+    function monthly(h, downPct = S.downPct, rate = S.rate) {
+      const price = Number(h.price) || 0;
+      const loan = price * (1 - downPct / 100);
+      const r = rate / 100 / 12, n = 360; // 30-year fixed
+      const pi = r ? (loan * r) / (1 - Math.pow(1 + r, -n)) : loan / n;
+      const tax = (price * (Number(h.taxRate) || 1.0)) / 100 / 12;   // Redfin's tax rate for the home, else about 1%
+      const ins = (Number(h.insurance) || price * 0.0035) / 12;       // Redfin's insurance estimate, else about 0.35%
+      const hoa = Number(h.hoa) || 0;
+      const pmi = downPct < 20 ? (loan * 0.005) / 12 : 0;              // mortgage insurance, roughly 0.5% a year
+      const round = (x) => Math.round(x / 10) * 10;
+      return { pi: round(pi), tax: round(tax), ins: round(ins), hoa: Math.round(hoa), pmi: round(pmi), down: Math.round(price - loan),
+        total: round(pi + tax + ins + hoa + pmi), taxGuess: !h.taxRate, insGuess: !h.insurance };
+    }
+
+    let costFor = null;
+    function openCost(id) {
+      costFor = homes.find((h) => h.id === id);
+      if (!costFor) return;
+      $("cost-home").textContent = `${costFor.address} · ${money(costFor.price)}`;
+      $("cost-down").value = S.downPct;
+      $("cost-rate").value = S.rate;
+      $("cost-error").textContent = "";
+      drawCost();
+      $("cost").showModal();
+    }
+    function drawCost() {
+      const down = Number($("cost-down").value) || 0, rate = Number($("cost-rate").value) || 0;
+      const m = monthly(costFor, down, rate);
+      const line = (label, v, note = "") => v ? `<div><span>${label}${note ? ` <small>${note}</small>` : ""}</span><b>${money(v)}</b></div>` : "";
+      $("cost-lines").innerHTML = line("Loan payment", m.pi, `(30 years at ${rate}%)`) + line("Property taxes", m.tax, m.taxGuess ? "(estimate)" : "")
+        + line("Home insurance", m.ins, m.insGuess ? "(estimate)" : "") + line("HOA", m.hoa) + line("Mortgage insurance", m.pmi, "(under 20% down)")
+        + `<div class="total"><span>About each month</span><b>${money(m.total)}</b></div>`
+        + `<div><span>Cash for the down payment</span><b>${money(m.down)}</b></div>`;
+      $("cost-note").textContent = (S.rateFromRedfin ? "The rate starts at today's 30-year fixed rate shown on Redfin. " : "")
+        + "Taxes and insurance use Redfin's estimates for this home. Closing costs aren't included. A lender will give you exact numbers.";
+    }
+    $("cost-down").addEventListener("input", drawCost);
+    $("cost-rate").addEventListener("input", drawCost);
+    $("cost-cancel").addEventListener("click", () => $("cost").close());
+    $("cost-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const go = $("cost-go");
+      go.disabled = true; go.textContent = "Saving…";
+      try {
+        const data = await send("settings", null, { downPct: $("cost-down").value, rate: $("cost-rate").value });
+        S = { ...S, ...data.settings };
+        $("cost").close();
+        render();
+        showToast("Monthly costs now use these numbers for everyone.");
+      } catch (err) {
+        $("cost-error").textContent = err.message || "Sorry, that didn't save.";
+      } finally { go.disabled = false; go.textContent = "Use these numbers for everyone"; }
+    });
+
+    /* ---------- Must-haves: green tick when a home meets it, red when it doesn't ---------- */
+    function mustsHtml(h) {
+      const t = (ok, yes, no) => ok === null ? `<span class="mh unk">? ${no}</span>` : `<span class="mh ${ok ? "ok" : "no"}">${ok ? "✓ " + yes : "✗ " + no}</span>`;
+      const has = (v) => v !== null && v !== undefined && v !== "";
+      const over = (h.price || 0) - S.budget;
+      return `<span class="musts">
+        ${t(has(h.beds) ? h.beds >= S.beds : null, "Beds", `Only ${h.beds ?? "?"} beds`)}
+        ${t(has(h.baths) ? h.baths >= S.baths : null, "Baths", `Only ${h.baths ?? "?"} baths`)}
+        ${t(has(h.sqft) ? h.sqft >= S.sqft : null, "Size", `Under ${Number(S.sqft).toLocaleString("en-US")} sq ft`)}
+        ${t(has(h.garage) ? h.garage >= S.garage : null, `${h.garage}-car garage`, has(h.garage) ? `${h.garage}-car garage` : "Garage")}
+        ${t(h.price ? over <= 0 : null, "Budget", `${money(over)} over budget`)}
+      </span>`;
+    }
+
+    /* ---------- "Might negotiate": signs a seller may take a lower offer ---------- */
+    function negotiate(h) {
+      const why = [];
+      if (h.dom >= 45) why.push(`on the market ${h.dom} days`);
+      const was = originalPrice(h.originalPrice);
+      const cuts = (Number(h.drops) || 0) + (was && was > h.price + 500 ? 1 : 0);
+      if (cuts >= 2) why.push(`price cut ${cuts} times`);
+      const town = market[h.city];
+      if (town?.ppsf && h.price && h.sqft && town.count >= 5) {
+        const ppsf = h.price / h.sqft;
+        const pct = Math.round((1 - ppsf / town.ppsf) * 100);
+        if (pct >= 8) why.push(`${pct}% below the usual price per sq ft in ${h.city}`);
+      }
+      return why;
+    }
+    function negoHtml(h) {
+      if (h.removed || /Sold|Off market/.test(h.status)) return "";
+      const why = negotiate(h);
+      if (!why.length) return "";
+      const text = why.join(", ");
+      return `<span class="nego" title="${esc(text)}">🤝 Might negotiate</span><span class="nego-why">${esc(text[0].toUpperCase() + text.slice(1))}</span>`;
+    }
+
+    function drivesHtml(h) {
+      const d = parse(h.drives, {}).mins || {};
+      const parts = Object.keys(d).map((k) => `${esc(k)} ${d[k]} min`);
+      return parts.length ? `<span class="drives">🚗 ${parts.join(" · ")}</span>` : "";
+    }
+
+    /* ---------- Family votes ---------- */
+    function voteSummary(h) {
+      const mine = votes.filter((v) => v.homeId === h.id).map((v) => ({ ...v, hearts: Number(v.hearts) }));
+      const avg = mine.length ? (mine.reduce((a, v) => a + v.hearts, 0) / mine.length).toFixed(1).replace(/\.0$/, "") : "";
+      const voted = mine.map((v) => v.name.toLowerCase());
+      const waiting = (S.family || []).filter((f) => voted.indexOf(f.toLowerCase()) < 0);
+      return { list: mine, avg, count: mine.length, waiting };
+    }
+    const heartStr = (n) => "♥".repeat(n) + "♡".repeat(5 - n);
+    function familyHtml(h) {
+      const v = voteSummary(h);
+      const my = (me() || "").toLowerCase();
+      const list = v.list.map((x) => `<span class="v${x.name.toLowerCase() === my ? " me" : ""}">${esc(x.name)} <span class="hearts" aria-label="${x.hearts} of 5 hearts">${heartStr(x.hearts)}</span></span>`).join("");
+      const tourChips = tours.filter((t) => t.homeId === h.id).map((t) => {
+        const a = Object.values(t.answers || {});
+        const photos = (t.files || []).filter((f) => f.type === "photo").length, audio = (t.files || []).some((f) => f.type === "audio");
+        return `<button type="button" class="tour-chip" data-tourview="${esc(t.id)}">📝 ${esc(t.name)}'s tour · ${shortDate(t.at)}${a.length ? ` · 👍 ${a.filter((x) => x === "yes").length} 👎 ${a.filter((x) => x === "no").length}` : ""}${photos ? ` · 📷 ${photos}` : ""}${audio ? " · 🎤" : ""}</button>`;
+      }).join("");
+      return (v.count ? `<span class="score"><span class="hearts">♥</span> ${v.avg} family score</span>` : "")
+        + list
+        + (v.waiting.length && v.count ? `<span class="wait">Waiting on ${esc(v.waiting.join(", "))}</span>` : "")
+        + `<button type="button" class="vote-btn" data-vote="${esc(h.id)}">♥ ${v.list.some((x) => x.name.toLowerCase() === my) ? "Change my vote" : "Vote"}</button>`
+        + tourChips;
+    }
+
+    let voteFor = null, voteName = "", voteHearts = 0;
+    function openVote(id) {
+      voteFor = homes.find((h) => h.id === id);
+      if (!voteFor) return;
+      voteName = (S.family || []).find((f) => f.toLowerCase() === (me() || "").toLowerCase()) || me() || "";
+      $("vote-home").textContent = voteFor.address + ", " + voteFor.city;
+      $("vote-error").textContent = "";
+      drawVote();
+      $("vote").showModal();
+    }
+    function drawVote() {
+      const existing = votes.find((v) => v.homeId === voteFor.id && v.name.toLowerCase() === voteName.toLowerCase());
+      if (!voteHearts && existing) voteHearts = Number(existing.hearts);
+      $("vote-who").innerHTML = (S.family || []).map((f) => `<button type="button" data-who="${esc(f)}" aria-pressed="${f.toLowerCase() === voteName.toLowerCase()}">${esc(f)}</button>`).join("");
+      $("vote-hearts").innerHTML = [1, 2, 3, 4, 5].map((n) => `<button type="button" data-h="${n}" class="${n <= voteHearts ? "on" : ""}" role="radio" aria-checked="${n === voteHearts}" aria-label="${n} heart${n > 1 ? "s" : ""}">♥</button>`).join("");
+    }
+    $("vote-who").addEventListener("click", (e) => { const b = e.target.closest("[data-who]"); if (b) { voteName = b.dataset.who; voteHearts = 0; drawVote(); } });
+    $("vote-hearts").addEventListener("click", (e) => { const b = e.target.closest("[data-h]"); if (b) { voteHearts = Number(b.dataset.h); drawVote(); } });
+    $("vote-cancel").addEventListener("click", () => { voteHearts = 0; $("vote").close(); });
+    $("vote").addEventListener("close", () => { voteHearts = 0; });
+    $("vote-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!voteName) { $("vote-error").textContent = "Please tap your name."; return; }
+      if (!voteHearts) { $("vote-error").textContent = "Please tap 1 to 5 hearts."; return; }
+      const go = $("vote-go");
+      go.disabled = true; go.textContent = "Saving…";
+      try {
+        const data = await send("vote", voteFor.id, { name: voteName, hearts: voteHearts });
+        store.set("homehunt.name", voteName);
+        votes = votes.filter((v) => !(v.homeId === voteFor.id && v.name.toLowerCase() === data.vote.name.toLowerCase())).concat([data.vote]);
+        $("vote").close();
+        render();
+        showToast(`Thanks, ${data.vote.name}! Your vote was saved.`);
+      } catch (err) {
+        $("vote-error").textContent = "Sorry, that didn't save. Please try again in a minute.";
+      } finally { go.disabled = false; go.textContent = "Save my vote"; }
+    });
+
+    /* ---------- New homes that match (the morning radar) ---------- */
+    let radarAll = false;
+    function radarCard(r) {
+      const photo = safeUrl(r.photoUrl);
+      const days = r.dom === null ? "" : r.dom <= 1 ? "Listed today" : `Listed ${r.dom} days ago`;
+      const oh = r.openHouse && r.openHouse > Date.now() ? ` · Open house ${dayName(r.openHouse)}, ${clock(r.openHouse)}` : "";
+      return `<li class="card">
+        ${photo ? `<img src="${esc(photo)}" alt="Front of ${esc(r.address)}" loading="lazy">` : `<span class="nophoto">🏠</span>`}
+        <div><strong>${r.dom !== null && r.dom <= 3 ? '<span class="fresh-tag">NEW</span>' : ""}${esc(r.address)}</strong>
+          <span class="meta"><b>${money(r.price)}</b> · ${esc(r.city)}<br>${r.beds} bed · ${r.baths} bath · ${Number(r.sqft || 0).toLocaleString("en-US")} sq ft${r.garage ? ` · ${r.garage}-car garage` : ""}</span></div>
+        <span class="meta">${days}${oh}</span>
+        <div class="acts">
+          <button type="button" class="btn" data-radar-add="${esc(r.url)}">＋ Add</button>
+          <a class="btn light" href="${esc(safeUrl(r.url))}" target="_blank" rel="noopener">Redfin</a>
+          <button type="button" class="btn light" data-radar-skip="${esc(r.url)}">Not for us</button>
+        </div>
+      </li>`;
+    }
+    function renderRadar() {
+      const shown = radarAll ? radar : radar.slice(0, 6);
+      $("radar").hidden = radar.length === 0;
+      $("radar-list").innerHTML = shown.map(radarCard).join("");
+      $("radar-more").hidden = radar.length <= 6;
+      $("radar-more").textContent = radarAll ? "Show fewer" : `Show all ${radar.length}`;
+      $("radar-sub").textContent = `Every morning we search Redfin in ${(S.towns || []).join(", ") || "our towns"} for homes up to ${money(S.radarMax || 450000)} with ${S.beds}+ beds, ${S.baths}+ baths and ${Number(S.sqft).toLocaleString("en-US")}+ sq ft. Add the ones you like, or tap "Not for us".`;
+    }
+    $("radar-more").addEventListener("click", () => { radarAll = !radarAll; renderRadar(); });
+
+    function addFromRadar(url) {
+      const r = radar.find((x) => x.url === url);
+      if (!r) return;
+      openAdd();
+      found = { redfinUrl: r.url, address: r.address, city: r.city, price: r.price, beds: r.beds, baths: r.baths, sqft: r.sqft, photoUrl: r.photoUrl };
+      const photo = safeUrl(r.photoUrl);
+      $("add-preview").innerHTML = `${photo ? `<img src="${esc(photo)}" alt="Front of ${esc(r.address)}">` : "<span></span>"}
+        <div><strong>${esc(r.address)}</strong><span>${esc(r.city)}, NC · ${money(r.price)}<br>${r.beds} bed · ${r.baths} bath · ${Number(r.sqft || 0).toLocaleString("en-US")} sq ft</span></div>`;
+      $("add-step1").hidden = true;
+      $("add-step2").hidden = false;
+      $("add-go").textContent = "Add to our list";
+      (me() ? $("add-why") : $("add-name")).focus();
+    }
+
+    async function skipRadar(url) {
+      const r = radar.find((x) => x.url === url);
+      if (!r) return;
+      radar = radar.filter((x) => x !== r);
+      renderRadar();
+      try {
+        await send("radar", null, { url, decision: "skip" });
+        showToast(`${r.address} is hidden.`, async () => {
+          radar.unshift(r); renderRadar();
+          try { await send("radar", null, { url, decision: "new" }); } catch {}
+        });
+      } catch {
+        radar.unshift(r); renderRadar();
+        showToast("Sorry, that didn't save. Please try again.");
+      }
+    }
+
+    /* ---------- Open houses for homes on our list ---------- */
+    function upcoming(h) {
+      return parse(h.openHouses, []).filter((o) => o.end > Date.now() && o.start < Date.now() + 10 * 864e5);
+    }
+    function ohTag(h) {
+      const next = upcoming(h)[0];
+      return next ? `<span class="oh-tag">🗓 Open house ${new Date(next.start).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}, ${clock(next.start)}</span>` : "";
+    }
+    /** A "Add to Google Calendar" link with the address, times and the Redfin link filled in. */
+    function calLink(h, o) {
+      const z = (ms) => new Date(ms).toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
+      const q = new URLSearchParams({ action: "TEMPLATE", text: `Open house: ${h.address}`, dates: `${z(o.start)}/${z(o.end)}`,
+        location: `${h.address}, ${h.city}, NC ${h.zip}`, details: `From our home hunt page. Redfin: ${h.redfinUrl}` });
+      return "https://calendar.google.com/calendar/render?" + q;
+    }
+    /** Google Maps directions through that day's open houses, in time order. */
+    function routeLink(stops) {
+      const place = (h) => `${h.address}, ${h.city}, NC ${h.zip}`;
+      const q = new URLSearchParams({ api: "1", travelmode: "driving", destination: place(stops[stops.length - 1].h) });
+      if (stops.length > 1) q.set("waypoints", stops.slice(0, -1).map((x) => place(x.h)).join("|"));
+      return "https://www.google.com/maps/dir/?" + q;
+    }
+    function renderOpenHouses(list) {
+      const all = [];
+      list.forEach((h, i) => upcoming(h).forEach((o) => all.push({ h, o, rank: i + 1 })));
+      all.sort((a, b) => a.o.start - b.o.start);
+      const days = {};
+      all.forEach((x) => { const k = new Date(x.o.start).toDateString(); (days[k] = days[k] || []).push(x); });
+      $("openhouses").hidden = all.length === 0;
+      $("oh-list").innerHTML = Object.keys(days).map((k) => {
+        const stops = days[k];
+        return `<div class="oh-day"><h3>${dayName(stops[0].o.start)}${stops.length > 1 ? `<a href="${esc(routeLink(stops))}" target="_blank" rel="noopener">🚗 Plan the route (${stops.length} stops)</a>` : ""}</h3><ul>
+          ${stops.map((x) => `<li><time>${clock(x.o.start)} – ${clock(x.o.end)}</time>
+            <button type="button" class="more" data-jump="${esc(x.h.id)}">#${x.rank} ${esc(x.h.address)}, ${esc(x.h.city)}</button>
+            <a class="cal" href="${esc(calLink(x.h, x.o))}" target="_blank" rel="noopener">＋ Add to calendar</a></li>`).join("")}
+        </ul></div>`;
+      }).join("");
+    }
+
+    /* ---------- Tour notes: checklist, notes, photos and voice notes ---------- */
+    const QUESTIONS = [
+      ["mainfloor", "Bedroom and full bath on the main floor?"],
+      ["roof", "Roof looks newer and in good shape?"],
+      ["hvac", "Heating and AC are newer (ask their age)?"],
+      ["waterheater", "Water heater is newer (ask its age)?"],
+      ["smell", "No musty, smoke or pet smells?"],
+      ["sound", "Floors, walls and ceilings look sound (no cracks or water stains)?"],
+      ["pressure", "Good water pressure (try a shower and sink)?"],
+      ["light", "Lots of natural light?"],
+      ["quiet", "Quiet street and neighbors?"],
+      ["yard", "Yard drains well and is a good size?"],
+      ["kitchen", "Kitchen works for our family?"],
+      ["feel", "The neighborhood feels safe and well kept?"],
+    ];
+    const LABEL = { yes: "👍 Yes", no: "👎 No", unsure: "🤷 Not sure" };
+    let tourDraft = null;   // { id, homeId, answers, files }
+    let recorder = null;    // { rec, chunks, stream, timer, started }
+
+    function openTour(id) {
+      const h = homes.find((x) => x.id === id);
+      if (!h) return;
+      const name = me();
+      const mine = tours.find((t) => t.homeId === id && name && t.name.toLowerCase() === name.toLowerCase());
+      tourDraft = mine ? { id: mine.id, homeId: id, answers: { ...mine.answers }, files: [...(mine.files || [])] }
+        : { id: Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4), homeId: id, answers: {}, files: [] };
+      $("tour-home").textContent = `${h.address}, ${h.city}`;
+      $("tour-name").value = name;
+      $("tour-notes").value = mine ? mine.notes : "";
+      $("tour-error").textContent = "";
+      $("tour-qs").innerHTML = QUESTIONS.map(([k, q]) => `<div class="q"><span>${q}</span><div class="yn" data-q="${k}">
+        ${["yes", "no", "unsure"].map((v) => `<button type="button" data-v="${v}" aria-pressed="${tourDraft.answers[k] === v}">${LABEL[v]}</button>`).join("")}</div></div>`).join("");
+      $("tour-rec").hidden = !(window.MediaRecorder && navigator.mediaDevices?.getUserMedia);
+      drawTourMedia();
+      $("tour").showModal();
+    }
+    $("tour-qs").addEventListener("click", (e) => {
+      const b = e.target.closest("[data-v]");
+      if (!b) return;
+      const k = b.closest("[data-q]").dataset.q;
+      tourDraft.answers[k] = tourDraft.answers[k] === b.dataset.v ? undefined : b.dataset.v; // tap again to clear
+      if (!tourDraft.answers[k]) delete tourDraft.answers[k];
+      b.parentElement.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", tourDraft.answers[k] === x.dataset.v));
+    });
+
+    const thumbUrl = (id, w = 400) => `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w${w}`;
+    const fileUrl = (id) => `https://drive.google.com/file/d/${encodeURIComponent(id)}/view`;
+    const audioUrl = (id) => `https://drive.google.com/uc?export=download&id=${encodeURIComponent(id)}`;
+    let uploading = 0;
+    function drawTourMedia() {
+      const photos = tourDraft.files.filter((f) => f.type === "photo");
+      $("tour-thumbs").innerHTML = photos.map((f) => `<a href="${fileUrl(f.id)}" target="_blank" rel="noopener"><img src="${thumbUrl(f.id, 200)}" alt="Tour photo"></a>`).join("")
+        + Array.from({ length: uploading }, () => `<span class="up">Uploading…</span>`).join("");
+      $("tour-audios").innerHTML = tourDraft.files.filter((f) => f.type === "audio").map((f) => `<audio controls preload="none" src="${audioUrl(f.id)}"></audio>`).join("");
+    }
+
+    /** Read a file as base64 text (what the script expects). */
+    const toBase64 = (blob) => new Promise((ok, fail) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(",")[1]); r.onerror = fail; r.readAsDataURL(blob); });
+
+    /** Phone photos are big (4–12 MB). Shrink to at most 1600 px wide as a JPEG before sending. */
+    async function shrink(file) {
+      try {
+        const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
+        const scale = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+        const c = document.createElement("canvas");
+        c.width = Math.round(bmp.width * scale); c.height = Math.round(bmp.height * scale);
+        c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+        return await new Promise((ok) => c.toBlob(ok, "image/jpeg", 0.82));
+      } catch { return file; } // the browser can't read it (some HEIC files): send it as is
+    }
+
+    async function upload(blob, mime) {
+      const data = await toBase64(blob);
+      const res = await send("upload", null, { homeId: tourDraft.homeId, name: $("tour-name").value.trim(), mime, data });
+      return res.file;
+    }
+
+    $("tour-photo").addEventListener("change", async (e) => {
+      const files = [...e.target.files];
+      e.target.value = "";
+      $("tour-error").textContent = "";
+      uploading += files.length; drawTourMedia();
+      await Promise.all(files.map(async (f) => {
+        try {
+          const small = await shrink(f);
+          tourDraft.files.push(await upload(small, small.type || f.type || "image/jpeg"));
+        } catch (err) { $("tour-error").textContent = "A photo didn't upload. Please try it again."; }
+        uploading--; drawTourMedia();
+      }));
+    });
+
+    $("tour-rec").addEventListener("click", async () => {
+      const btn = $("tour-rec");
+      if (recorder) { recorder.rec.stop(); return; }
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const type = ["audio/mp4", "audio/webm;codecs=opus", "audio/webm"].find((t) => MediaRecorder.isTypeSupported?.(t)) || "";
+        const rec = new MediaRecorder(stream, type ? { mimeType: type } : undefined);
+        recorder = { rec, chunks: [], stream, started: Date.now() };
+        rec.ondataavailable = (ev) => ev.data.size && recorder.chunks.push(ev.data);
+        rec.onstop = async () => {
+          const { chunks, stream: st, timer } = recorder;
+          clearInterval(timer); st.getTracks().forEach((t) => t.stop()); recorder = null;
+          btn.classList.remove("rec"); btn.textContent = "🎤 Voice note";
+          const blob = new Blob(chunks, { type: (rec.mimeType || "audio/webm").split(";")[0] });
+          uploading++; drawTourMedia();
+          try { tourDraft.files.push(await upload(blob, blob.type)); }
+          catch { $("tour-error").textContent = "The voice note didn't upload. Please record it again."; }
+          uploading--; drawTourMedia();
+        };
+        rec.start(1000);
+        btn.classList.add("rec");
+        const tick = () => {
+          const s = Math.round((Date.now() - recorder.started) / 1000);
+          btn.textContent = `■ Stop (${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")})`;
+          if (s >= 180) rec.stop(); // 3 minutes at most
+        };
+        tick(); recorder.timer = setInterval(tick, 500);
+      } catch { $("tour-error").textContent = "We couldn't use the microphone. Check that this page is allowed to use it."; }
+    });
+
+    $("tour-cancel").addEventListener("click", () => $("tour").close());
+    $("tour").addEventListener("close", () => { if (recorder) recorder.rec.stop(); });
+    $("tour-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const name = $("tour-name").value.trim();
+      if (!name) { $("tour-error").textContent = "Please type your name."; $("tour-name").focus(); return; }
+      if (uploading || recorder) { $("tour-error").textContent = "Please wait for the photos and voice note to finish."; return; }
+      const go = $("tour-go");
+      go.disabled = true; go.textContent = "Saving…";
+      try {
+        store.set("homehunt.name", name);
+        const data = await send("tour", null, { tour: { ...tourDraft, name, notes: $("tour-notes").value.trim() } });
+        tours = tours.filter((t) => t.id !== data.tour.id).concat([data.tour]);
+        $("tour").close();
+        render();
+        showToast("Your tour notes were saved. Thank you!");
+      } catch (err) {
+        $("tour-error").textContent = "Sorry, that didn't save. Please try again in a minute.";
+      } finally { go.disabled = false; go.textContent = "Save tour notes"; }
+    });
+
+    function viewTour(id) {
+      const t = tours.find((x) => x.id === id);
+      const h = t && homes.find((x) => x.id === t.homeId);
+      if (!t || !h) return;
+      $("tv-title").textContent = `${t.name}'s tour of ${h.address}`;
+      const answers = QUESTIONS.filter(([k]) => t.answers?.[k]).map(([k, q]) => `<li class="${t.answers[k]}"><b>${LABEL[t.answers[k]]}</b> ${esc(q)}</li>`).join("");
+      const photos = (t.files || []).filter((f) => f.type === "photo");
+      const audios = (t.files || []).filter((f) => f.type === "audio");
+      $("tv-body").innerHTML = `<p style="color:var(--muted)">${shortDate(t.at)}</p>
+        ${answers ? `<ul class="answers">${answers}</ul>` : ""}
+        ${t.notes ? `<div class="tour-notes">${esc(t.notes)}</div>` : ""}
+        ${photos.length ? `<div class="thumbs">${photos.map((f) => `<a href="${fileUrl(f.id)}" target="_blank" rel="noopener"><img src="${thumbUrl(f.id)}" alt="Tour photo" loading="lazy"></a>`).join("")}</div>` : ""}
+        ${audios.length ? `<div class="audios">${audios.map((f) => `<audio controls preload="none" src="${audioUrl(f.id)}"></audio><a href="${fileUrl(f.id)}" target="_blank" rel="noopener">Open the voice note</a>`).join("")}</div>` : ""}`;
+      $("tourview").showModal();
+    }
+
+    /* ---------- Map (Leaflet + OpenStreetMap, loaded only when someone opens it) ---------- */
+    const mapState = { map: null, layer: null, dragging: false };
+    function loadLeaflet() {
+      if (window.L) return Promise.resolve();
+      return new Promise((ok, fail) => {
+        const css = document.createElement("link");
+        css.rel = "stylesheet"; css.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+        document.head.append(css);
+        const js = document.createElement("script");
+        js.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+        js.onload = ok; js.onerror = fail;
+        document.head.append(js);
+      });
+    }
+    function drawPins() {
+      const L = window.L;
+      if (mapState.layer) mapState.layer.remove();
+      const layer = L.layerGroup().addTo(mapState.map);
+      const points = [];
+      radar.filter((r) => r.lat && r.lng).forEach((r) => {
+        L.marker([r.lat, r.lng], { icon: L.divIcon({ className: "", html: '<span class="pin newpin"></span>', iconSize: [16, 16] }), zIndexOffset: -100 })
+          .bindPopup(`${safeUrl(r.photoUrl) ? `<img src="${esc(r.photoUrl)}" alt="">` : ""}<b>New: ${esc(r.address)}</b><br>${money(r.price)} · ${r.beds} bed · ${esc(r.city)}<br><a href="${esc(safeUrl(r.url))}" target="_blank" rel="noopener">Open in Redfin</a>`)
+          .addTo(layer);
+      });
+      ourList().forEach((h, i) => {
+        if (!h.lat || !h.lng) return;
+        points.push([h.lat, h.lng]);
+        const icon = L.divIcon({ className: "", html: `<span class="pin${i === 0 ? " first" : ""}">${i + 1}</span>`, iconSize: [30, 30], iconAnchor: [15, 15] });
+        L.marker([h.lat, h.lng], { icon, zIndexOffset: 1000 - i, title: `#${i + 1} ${h.address}` })
+          .bindPopup(`${safeUrl(h.photoUrl) ? `<img src="${esc(h.photoUrl)}" alt="">` : ""}<b>#${i + 1} ${esc(h.address)}</b><br>${money(h.price)} · ${h.beds} bed · ${esc(h.city)}${drivesHtml(h)}<br><button type="button" data-pinjump="${esc(h.id)}">See it in our list</button>`)
+          .addTo(layer);
+      });
+      mapState.layer = layer;
+      return points;
+    }
+    $("map-btn").addEventListener("click", async () => {
+      const panel = $("map-panel");
+      const open = panel.hidden;
+      panel.hidden = !open;
+      $("map-btn").setAttribute("aria-pressed", open);
+      $("map-btn").textContent = open ? "🗺 Hide the map" : "🗺 Show the map";
+      if (!open) return;
+      try {
+        await loadLeaflet();
+        if (!mapState.map) {
+          mapState.map = L.map("map", { scrollWheelZoom: false });
+          L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "© OpenStreetMap contributors" }).addTo(mapState.map);
+        }
+        const pts = drawPins();
+        mapState.map.invalidateSize();
+        if (pts.length) mapState.map.fitBounds(pts, { padding: [30, 30], maxZoom: 13 }); else mapState.map.setView([35.7, -78.6], 10);
+        if (!pts.length) showToast("Map pins appear after the morning check finds each home's location.");
+      } catch { showToast("The map couldn't load. Please try again in a minute."); }
+    });
+
+    /* ---------- Bigger text ---------- */
+    function setBig(on) {
+      document.documentElement.classList.toggle("big", on);
+      $("big-btn").setAttribute("aria-pressed", on);
+      $("big-btn").textContent = on ? "A− Normal text" : "A+ Bigger text";
+      store.set("homehunt.big", on ? "1" : "0");
+    }
+    setBig(document.documentElement.classList.contains("big"));
+    $("big-btn").addEventListener("click", () => { setBig(!document.documentElement.classList.contains("big")); render(); });
+
+    /* ---------- Put it on the home screen ---------- */
+    let installPrompt = null;
+    const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+    $("install-btn").hidden = !!standalone;
+    addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installPrompt = e; });
+    $("install-btn").addEventListener("click", () => {
+      const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+      $("install-go").hidden = !installPrompt;
+      $("install-body").innerHTML = installPrompt ? "<p>Tap <b>Add it now</b>, then <b>Install</b>.</p>"
+        : ios ? `<ol class="install-steps"><li>Open this page in <b>Safari</b>.</li><li>Tap the <b>Share</b> button (the square with an arrow pointing up).</li><li>Scroll down and tap <b>Add to Home Screen</b>.</li><li>Tap <b>Add</b>.</li></ol>`
+        : `<ol class="install-steps"><li>Open this page in <b>Chrome</b>.</li><li>Tap the <b>⋮</b> menu at the top right.</li><li>Tap <b>Add to Home screen</b> (or <b>Install app</b>).</li><li>Tap <b>Add</b>.</li></ol>`;
+      $("install").showModal();
+    });
+    $("install-go").addEventListener("click", async () => { if (installPrompt) { installPrompt.prompt(); await installPrompt.userChoice; installPrompt = null; $("install").close(); } });
 
     load();
   </script>
