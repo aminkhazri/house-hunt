@@ -876,14 +876,14 @@ function historySheet_() {
 const SETTINGS_TAB = "Settings";
 const SETTINGS = [
   // key, label shown in the Sheet, default, what it means
-  ["budget", "Budget (most we want to pay)", 400000, "Homes above this get a red \"over budget\" tick on the page."],
+  ["budget", "Budget (most we want to pay)", 460000, "Homes above this get a red \"over budget\" tick on the page."],
   ["beds", "Must have: bedrooms", 3, "At least this many bedrooms."],
   ["baths", "Must have: bathrooms", 2.5, "At least this many bathrooms."],
   ["sqft", "Must have: square feet", 2250, "At least this many square feet."],
   ["garage", "Must have: garage spaces", 2, "At least this many garage spaces."],
   ["school", "Must have: elementary school rating", 8, "GreatSchools rating out of 10 for the assigned elementary school (8 = 8, 9 and 10 are OK). The radar hides homes below it."],
   ["towns", "New-listing radar: towns", "Cary, Clayton, Wake Forest, Holly Springs, Angier, Garner, Fuquay-Varina", "Towns the morning job searches on Redfin, separated by commas."],
-  ["radarMax", "New-listing radar: highest price", 450000, "The radar shows new homes up to this price."],
+  ["radarMax", "New-listing radar: highest price", 460000, "The radar shows new homes up to this price."],
   ["downPct", "Down payment (%)", 20, "Used for the monthly cost. Also editable on the page."],
   ["rate", "Mortgage rate (%)", "", "Leave blank to use today's 30-year fixed rate from Redfin."],
   ["family", "Family voters", "Amin, Aurora, Rachel, David", "Names for the hearts vote, separated by commas."],

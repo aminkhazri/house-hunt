@@ -832,7 +832,7 @@
     let radar = [];     // new homes that match, from the morning search
     let market = {};    // { Clayton: { ppsf, dom, count } } typical numbers in each town
     // The family's settings (the Settings tab in the Sheet). These are fallbacks until the list loads.
-    let S = { budget: 400000, beds: 3, baths: 2.5, sqft: 2250, garage: 2, school: 8, downPct: 20, rate: 6.5,
+    let S = { budget: 460000, beds: 3, baths: 2.5, sqft: 2250, garage: 2, school: 8, downPct: 20, rate: 6.5,
       family: ["Amin", "Aurora", "Rachel", "David"], places: [] };
 
     /** The home's area safety: CrimeGrade's zip-code grade if we have it, otherwise the grade saved in the Sheet. */
@@ -1762,7 +1762,7 @@
       $("radar-list").innerHTML = shown.map(radarCard).join("");
       $("radar-more").hidden = radar.length <= 6;
       $("radar-more").textContent = radarAll ? "Show fewer" : `Show all ${radar.length}`;
-      $("radar-sub").textContent = `Every morning we search Redfin in ${(S.towns || []).join(", ") || "our towns"} for homes up to ${money(S.radarMax || 450000)} with ${S.beds}+ beds, ${S.baths}+ baths, ${Number(S.sqft).toLocaleString("en-US")}+ sq ft and an elementary school rated ${S.school} or higher. Add the ones you like, or tap "Not for us".`;
+      $("radar-sub").textContent = `Every morning we search Redfin in ${(S.towns || []).join(", ") || "our towns"} for homes up to ${money(S.radarMax || 460000)} with ${S.beds}+ beds, ${S.baths}+ baths, ${Number(S.sqft).toLocaleString("en-US")}+ sq ft and an elementary school rated ${S.school} or higher. Add the ones you like, or tap "Not for us".`;
     }
     $("radar-more").addEventListener("click", () => { radarAll = !radarAll; renderRadar(); });
 
