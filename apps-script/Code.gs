@@ -859,7 +859,7 @@ const SETTINGS = [
   ["downPct", "Down payment (%)", 20, "Used for the monthly cost. Also editable on the page."],
   ["rate", "Mortgage rate (%)", "", "Leave blank to use today's 30-year fixed rate from Redfin."],
   ["family", "Family voters", "Amin, Aurora, Rachel, David", "Names for the hearts vote, separated by commas."],
-  ["emailTo", "Morning email also goes to", "rmskhazri@gmail.com, Katie.M.Ernst@gmail.com, David.L.Ernst@gmail.com", "The Sheet's owner always gets it. Separate addresses with commas. Leave blank for just the owner."],
+  ["emailTo", "Morning email also goes to", "Katie.M.Ernst@gmail.com, David.L.Ernst@gmail.com", "The Sheet's owner always gets it. Separate addresses with commas. Leave blank for just the owner."],
   ["places", "Drive times to", "RDU Airport = Raleigh-Durham International Airport, NC; Downtown Raleigh = Fayetteville St, Raleigh, NC; WakeMed = WakeMed Raleigh Campus, Raleigh, NC", "Short name = address, separated by semicolons."],
   ["pageUrl", "Family page link", "https://aminkhazri.github.io/house-hunt/", "Used in the morning email."],
 ];
