@@ -569,6 +569,12 @@
     .tl .upnext { background: #17803d; color: #fff; } .tl .tflag { background: #fde4e1; color: #a5322a; }
     .tour-route { display: inline-block; margin-top: 12px; text-decoration: none; }
     @media print { #tour-plan { break-inside: avoid; } }
+    .hidden-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
+    .hidden-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; background: var(--paper); border: 1px dashed var(--rule); border-radius: 12px; padding: 8px 12px; }
+    .hidden-list li > div { flex: 1 1 220px; display: grid; }
+    .hidden-list strong { color: var(--navy); } .hidden-list span { font-size: .85rem; color: var(--muted); }
+    .hidden-list .by { color: #7a5600; font-weight: 700; }
+    .hidden-list .tool { text-decoration: none; }
   </style>
 </head>
 <body>
@@ -600,11 +606,13 @@
       </div>
     </section>
 
-    <section class="panel" id="radar" hidden aria-labelledby="radar-title">
+    <section class="panel" id="radar" aria-labelledby="radar-title">
       <h2 id="radar-title">🆕 New homes that match</h2>
       <p class="sub" id="radar-sub">Every morning we search Redfin for new listings that match what we need. Add the ones you like, or tap "Not for us".</p>
       <ul class="cards" id="radar-list"></ul>
       <button type="button" class="tool more-cards" id="radar-more" hidden></button>
+      <button type="button" class="tool more-cards" id="hidden-btn" aria-expanded="false" hidden></button>
+      <ul class="hidden-list" id="hidden-list" hidden></ul>
     </section>
 
     <div class="list-head">
@@ -715,6 +723,15 @@
     </form>
   </dialog>
 
+
+  <dialog id="who" aria-labelledby="who-title">
+    <form method="dialog">
+      <h2 id="who-title">Who are you?</h2>
+      <p>So the family knows who did what. We'll remember it on this phone or computer.</p>
+      <div class="pick" id="who-pick"></div>
+      <div class="dialog-buttons"><button class="btn light" value="cancel">Cancel</button></div>
+    </form>
+  </dialog>
 
   <dialog id="vote" aria-labelledby="vote-title">
     <form id="vote-form">
@@ -1001,6 +1018,7 @@
       votes = data.votes || [];
       tours = data.tours || [];
       radar = data.radar || [];
+      radarHidden = data.radarHidden || [];
       plan = data.plan && Array.isArray(data.plan.stops) ? data.plan : { stops: [], hotel: null };
       market = data.market || {};
       if (data.settings) S = { ...S, ...data.settings };
@@ -1056,7 +1074,7 @@
       const res = await fetch(API, {
         method: "POST",
         headers: { "Content-Type": "text/plain;charset=utf-8" }, // keeps it a simple request (no CORS preflight)
-        body: JSON.stringify({ action, id, ...extra }),
+        body: JSON.stringify({ action, id, by: store.get("homehunt.name") || "", ...extra }), // "by" goes in the Activity log
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Something went wrong.");
@@ -1071,7 +1089,7 @@
         const res = await fetch(API, {
           method: "POST",
           headers: { "Content-Type": "text/plain;charset=utf-8" }, // keeps it a simple request (no CORS preflight)
-          body: JSON.stringify({ action, id, passcode, ...extra }),
+          body: JSON.stringify({ action, id, passcode, by: store.get("homehunt.name") || "", ...extra }),
         });
         const data = await res.json();
         if (data.ok) { recent = { pass: passcode, at: Date.now() }; return data; }
@@ -1085,7 +1103,8 @@
 
     /* ---------- Remove, undo, bring back ---------- */
     /** Show the Remove box. Resolves true once the home is removed in the Sheet, false if they kept it. */
-    function confirmRemove(h) {
+    async function confirmRemove(h) {
+      if (!(await whoAmI())) return false;
       const dlg = $("confirm");
       $("confirm-title").textContent = `Remove ${h.address}?`;
       $("confirm-text").textContent = "It will come off our list and the Google Sheet. You can bring it back anytime from the bottom of this page.";
@@ -1615,7 +1634,22 @@
     });
 
     /* ---------- New homes that match (the morning radar) ---------- */
-    let radarAll = false;
+    let radarAll = false, hiddenOpen = false;
+    let radarHidden = []; // matches someone hid: { url, address, city, price, photoUrl, by, at }
+
+    /** The family member using this phone. Asks once (big name buttons), then remembers. Resolves "" if they cancel. */
+    function whoAmI() {
+      if (me()) return Promise.resolve(me());
+      const dlg = $("who");
+      $("who-pick").innerHTML = (S.family || []).map((f) => `<button type="button" data-name="${esc(f)}">${esc(f)}</button>`).join("");
+      dlg.showModal();
+      return new Promise((resolve) => {
+        const done = (name) => { dlg.close(); $("who-pick").onclick = null; dlg.onclose = null; if (name) store.set("homehunt.name", name); resolve(name || ""); };
+        $("who-pick").onclick = (e) => { const b = e.target.closest("[data-name]"); if (b) done(b.dataset.name); };
+        dlg.onclose = () => done("");
+      });
+    }
+    const whenText = (iso) => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleDateString("en-US", { weekday: "short" }) + " " + d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }); };
     function radarCard(r) {
       const photo = safeUrl(r.photoUrl);
       const days = r.dom === null ? "" : r.dom <= 1 ? "Listed today" : `Listed ${r.dom} days ago`;
@@ -1633,12 +1667,37 @@
     }
     function renderRadar() {
       const shown = radarAll ? radar : radar.slice(0, 6);
-      $("radar").hidden = radar.length === 0;
+      $("radar").hidden = radar.length === 0 && radarHidden.length === 0;
       $("radar-list").innerHTML = shown.map(radarCard).join("");
+      $("radar-list").hidden = radar.length === 0;
       $("radar-more").hidden = radar.length <= 6;
       $("radar-more").textContent = radarAll ? "Show fewer" : `Show all ${radar.length}`;
-      $("radar-sub").textContent = `Every morning we search Redfin in ${(S.towns || []).join(", ") || "our towns"} for homes up to ${money(S.radarMax || 460000)} with ${S.beds}+ beds, ${S.baths}+ baths, ${Number(S.sqft).toLocaleString("en-US")}+ sq ft and an elementary school rated ${S.school} or higher. Add the ones you like, or tap "Not for us".`;
+      $("radar-sub").textContent = radar.length
+        ? `Every morning we search Redfin in ${(S.towns || []).join(", ") || "our towns"} for homes up to ${money(S.radarMax || 460000)} with ${S.beds}+ beds, ${S.baths}+ baths, ${Number(S.sqft).toLocaleString("en-US")}+ sq ft and an elementary school rated ${S.school} or higher. Add the ones you like, or tap "Not for us".`
+        : "No new matches right now. Redfin is checked again tomorrow morning.";
+      // Homes someone tapped "Not for us" on, with who and when, and a way to bring them back.
+      $("hidden-btn").hidden = radarHidden.length === 0;
+      $("hidden-btn").textContent = hiddenOpen ? "Hide this list" : `Hidden recently (${radarHidden.length})`;
+      $("hidden-btn").setAttribute("aria-expanded", hiddenOpen);
+      $("hidden-list").hidden = !hiddenOpen || !radarHidden.length;
+      $("hidden-list").innerHTML = radarHidden.map((r) => `<li>
+        <div><strong>${esc(r.address)}</strong><span>${esc(r.city)}${r.price ? " · " + money(r.price) : ""}</span>
+          <span class="by">Hidden by ${esc(r.by || "someone")}${r.at ? " · " + esc(whenText(r.at)) : ""}</span></div>
+        <a class="tool" href="${esc(safeUrl(r.url))}" target="_blank" rel="noopener">Redfin</a>
+        <button type="button" class="tool" data-unhide="${esc(r.url)}">Bring back</button></li>`).join("");
     }
+    $("hidden-btn").addEventListener("click", () => { hiddenOpen = !hiddenOpen; renderRadar(); });
+    $("hidden-list").addEventListener("click", async (e) => {
+      const b = e.target.closest("[data-unhide]");
+      if (!b) return;
+      b.disabled = true; b.textContent = "Bringing back…";
+      try {
+        await send("radar", null, { url: b.dataset.unhide, decision: "new" });
+        radarHidden = radarHidden.filter((x) => x.url !== b.dataset.unhide);
+        showToast("It's back in New homes that match.");
+        await load();
+      } catch { b.disabled = false; b.textContent = "Bring back"; showToast("Sorry, that didn't save. Please try again."); }
+    });
     $("radar-more").addEventListener("click", () => { radarAll = !radarAll; renderRadar(); });
 
     function addFromRadar(url) {
@@ -1658,16 +1717,19 @@
     async function skipRadar(url) {
       const r = radar.find((x) => x.url === url);
       if (!r) return;
+      if (!(await whoAmI())) return; // cancelled: nothing happens
       radar = radar.filter((x) => x !== r);
+      const hiddenRow = { url: r.url, address: r.address, city: r.city, price: r.price, photoUrl: r.photoUrl, by: me(), at: new Date().toISOString() };
+      radarHidden.unshift(hiddenRow);
       renderRadar();
       try {
         await send("radar", null, { url, decision: "skip" });
         showToast(`${r.address} is hidden.`, async () => {
-          radar.unshift(r); renderRadar();
+          radar.unshift(r); radarHidden = radarHidden.filter((x) => x !== hiddenRow); renderRadar();
           try { await send("radar", null, { url, decision: "new" }); } catch {}
         });
       } catch {
-        radar.unshift(r); renderRadar();
+        radar.unshift(r); radarHidden = radarHidden.filter((x) => x !== hiddenRow); renderRadar();
         showToast("Sorry, that didn't save. Please try again.");
       }
     }

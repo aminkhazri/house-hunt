@@ -237,3 +237,9 @@ The **🎟 Our tour plan** section at the top of the page shows Katie's schedule
 - The hotel is the **Hotel for our tour** row in Settings (`Name = address`). The script looks up its location once with Apps Script's Maps geocoder and remembers it.
 - The map is satellite imagery (Leaflet with Esri World Imagery tiles, plus road and place-name layers). Numbered pins show the visiting order, joined by a dashed line from the hotel. The line is straight between stops; the "Open the route in Google Maps" button gives real driving directions.
 - The section hides itself after the last day of the plan.
+
+## Who did what
+
+- Every change made from the page (adding, moving, removing, bringing back, comments, votes, tour notes, hiding or bringing back a new match, cost settings) is logged in the **Activity** tab of the Sheet: when, who, what, which home, details. Newest on top.
+- The page sends the person's name (`by`) with each change. The name is remembered on each phone or computer the first time someone votes, comments, adds a home or saves tour notes. If the page doesn't know who you are yet, hiding a new match or removing a home first asks **Who are you?** with big name buttons.
+- In the **New listings** tab, `decidedBy` and `decidedAt` record who hid or added each match. The page shows **Hidden recently (N)** under the new matches, with who hid each one, when, and a **Bring back** button.

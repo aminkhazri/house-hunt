@@ -126,29 +126,36 @@ function doPost(e) {
 
     lock.waitLock(10000); // one write at a time, so two reviewers can't collide
     clearListCache_();    // something is about to change, so the saved copy of the list is out of date
-    switch (body.action) {
-      case "add": return json_({ ok: true, home: addHome_(body.home) });
-      case "addRedfin": {
-        const home = addFromRedfin_(body);
-        decideRadar_(home.redfinUrl, "added"); // if it came from the "New today" box, take it out of there
-        return json_({ ok: true, home: home });
-      }
-      case "move": return json_({ ok: true, order: moveHome_(body.id, body.direction) });
-      case "moveTo": return json_({ ok: true, order: moveHome_(body.id, null, Number(body.position)) });
-      case "remove": setRemoved_(body.id, true, body.reason); return json_({ ok: true });
-      case "restore": setRemoved_(body.id, false); return json_({ ok: true });
-      case "comment": return json_({ ok: true, comment: addComment_(body) });
-      case "vote": return json_({ ok: true, vote: saveVote_(body) });
-      case "tour": return json_({ ok: true, tour: saveTour_(body.tour) });
-      case "radar": return json_({ ok: true, radar: decideRadar_(body.url, body.decision) });
-      case "settings": return json_({ ok: true, settings: saveCostSettings_(body) });
-      default: return json_({ ok: false, error: "Unknown action." });
-    }
+    const out = handlePost_(body);
+    try { logActivity_(body, out); } catch (e) { /* the change itself still counts */ }
+    return json_(out);
   } catch (err) {
     return json_({ ok: false, error: String(err.message || err) });
   } finally {
-    lock.releaseLock();
+    try { lock.releaseLock(); } catch (e) { /* not held */ }
   }
+}
+
+/** Do one change from the page. Returns the answer object (doPost sends it back as JSON). */
+function handlePost_(body) {
+    switch (body.action) {
+      case "add": return { ok: true, home: addHome_(body.home) };
+      case "addRedfin": {
+        const home = addFromRedfin_(body);
+        decideRadar_(home.redfinUrl, "added", body.addedBy || body.by); // if it came from the "New homes" box, take it out of there
+        return { ok: true, home: home };
+      }
+      case "move": return { ok: true, order: moveHome_(body.id, body.direction) };
+      case "moveTo": return { ok: true, order: moveHome_(body.id, null, Number(body.position)) };
+      case "remove": setRemoved_(body.id, true, body.reason); return { ok: true };
+      case "restore": setRemoved_(body.id, false); return { ok: true };
+      case "comment": return { ok: true, comment: addComment_(body) };
+      case "vote": return { ok: true, vote: saveVote_(body) };
+      case "tour": return { ok: true, tour: saveTour_(body.tour) };
+      case "radar": return { ok: true, radar: decideRadar_(body.url, body.decision, body.by) };
+      case "settings": return { ok: true, settings: saveCostSettings_(body) };
+      default: return { ok: false, error: "Unknown action." };
+    }
 }
 
 /* ---------- Fast list: a saved copy of the answer ---------- */
@@ -180,6 +187,7 @@ function listJson_() {
       answers: parseJson_(t.answers, {}), files: parseJson_(t.files, []),
     })),
     radar: radarForPage_(),
+    radarHidden: radarHiddenForPage_(),
     plan: planForPage_(),
     market: parseJson_(props.getProperty("MARKET"), {}),
     settings: publicSettings_(),
@@ -1131,7 +1139,7 @@ function saveUpload_(body) {
 
 const RADAR_TAB = "New listings";
 const RADAR_COLUMNS = ["url", "address", "city", "zip", "price", "beds", "baths", "sqft", "garage", "dom",
-  "ppsf", "hoa", "lat", "lng", "photoUrl", "openHouse", "foundAt", "status", "school", "schoolScore"];
+  "ppsf", "hoa", "lat", "lng", "photoUrl", "openHouse", "foundAt", "status", "school", "schoolScore", "decidedBy", "decidedAt"];
 const RADAR_DAYS = 14;  // a match stays in "New today" for two weeks unless someone adds or skips it
 const UA = { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36" };
 
@@ -1281,7 +1289,7 @@ function radarCheck_() {
     const sheet = tab_(RADAR_TAB, RADAR_COLUMNS, "#e9f8ee");
     readTab_(RADAR_TAB, RADAR_COLUMNS).forEach((r) => {
       const mine = byNum[homeNum_(r.url)];
-      if (mine && (r.status === "skipped" || r.status === "added")) mine.status = r.status;
+      if (mine && (r.status === "skipped" || r.status === "added")) Object.assign(mine, { status: r.status, decidedBy: r.decidedBy, decidedAt: r.decidedAt });
     });
     const all = Object.keys(byNum).map((k) => byNum[k]);
     sheet.getRange(1, 1, 1, RADAR_COLUMNS.length).setValues([RADAR_COLUMNS]); // header, in case new columns were added
@@ -1296,6 +1304,17 @@ function radarCheck_() {
   Logger.log("Radar: %s towns, %s matching homes, %s checked, %s still waiting, %s new.", townsRead, found.length,
     Math.min(waiting.length, 40), Math.max(waiting.length - 40, 0), kept.length);
   return kept;
+}
+
+/** Matches someone hid in the last two weeks, newest first, so the page can show who and bring them back. */
+function radarHiddenForPage_() {
+  const cutoff = Date.now() - RADAR_DAYS * 864e5;
+  return readTab_(RADAR_TAB, RADAR_COLUMNS)
+    .filter((r) => r.status === "skipped" && new Date(r.decidedAt || r.foundAt).getTime() > cutoff)
+    .sort((a, b) => String(b.decidedAt).localeCompare(String(a.decidedAt)))
+    .slice(0, 40)
+    .map((r) => ({ url: r.url, address: r.address, city: r.city, price: Number(r.price) || null, photoUrl: r.photoUrl,
+      by: r.decidedBy || "", at: r.decidedAt || "" }));
 }
 
 /** The matches the page shows in its "New today" box. */
@@ -1316,16 +1335,65 @@ function radarForPage_() {
 }
 
 /** "Not for us" on the page, or "added" once it's on our list. */
-function decideRadar_(url, decision) {
-  const status = { added: "added", skip: "skipped", "new": "new" }[decision] || "skipped"; // "new" = undo a skip
+function decideRadar_(url, decision, who) {
+  const status = { added: "added", skip: "skipped", "new": "new" }[decision] || "skipped"; // "new" = bring back a skipped one
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(RADAR_TAB);
   if (!sheet || sheet.getLastRow() < 2) return null;
   const num = homeNum_(url);
   const urls = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues().flat();
   const i = urls.findIndex((u) => homeNum_(u) === num);
   if (!num || i < 0) return null;
-  sheet.getRange(i + 2, RADAR_COLUMNS.indexOf("status") + 1).setValue(status);
+  const col = (k) => RADAR_COLUMNS.indexOf(k) + 1;
+  sheet.getRange(1, col("decidedBy"), 1, 2).setValues([["decidedBy", "decidedAt"]]); // in case the tab is older than these columns
+  sheet.getRange(i + 2, col("status")).setValue(status);
+  sheet.getRange(i + 2, col("decidedBy"), 1, 2).setValues([[whoName_(who), new Date().toISOString()]]);
   return status;
+}
+
+/** A tidy name for the logs: matches the family list ("rachel" -> "Rachel"), else "Someone". */
+function whoName_(who) {
+  const name = String(who || "").trim().slice(0, 40);
+  if (!name) return "Someone";
+  return splitList_(settings_().family).find((f) => f.toLowerCase() === name.toLowerCase()) || name;
+}
+
+/* ---------- Activity log: who did what, and when ---------- */
+
+const ACTIVITY_TAB = "Activity";
+
+/** One line in the Activity tab for every change made from the page. */
+function logActivity_(body, out) {
+  if (!out || !out.ok) return;
+  const homeName = (id) => {
+    if (!id) return "";
+    const h = readHomes_().find((x) => String(x.id) === String(id));
+    return h ? h.address + ", " + h.city : String(id);
+  };
+  const radarName = (url) => {
+    const r = readTab_(RADAR_TAB, RADAR_COLUMNS).find((x) => homeNum_(x.url) === homeNum_(url));
+    return r ? r.address + ", " + r.city : String(url || "");
+  };
+  let who = body.by, what = "", home = "", detail = "";
+  switch (body.action) {
+    case "add": what = "Added a home"; home = out.home ? out.home.address + ", " + out.home.city : ""; break;
+    case "addRedfin": who = body.addedBy || body.by; what = "Added a home"; home = out.home ? out.home.address + ", " + out.home.city : ""; detail = body.why || ""; break;
+    case "move": what = "Moved a home " + (body.direction === "up" ? "up" : "down"); home = homeName(body.id); break;
+    case "moveTo": what = "Moved a home to #" + body.position; home = homeName(body.id); break;
+    case "remove": what = "Removed a home"; home = homeName(body.id); detail = body.reason || ""; break;
+    case "restore": what = "Brought a home back"; home = homeName(body.id); break;
+    case "comment": who = body.name || body.by; what = "Commented"; home = homeName(body.id); detail = String(body.text || "").slice(0, 200); break;
+    case "vote": who = body.name || body.by; what = "Voted " + body.hearts + " ♥"; home = homeName(body.id); break;
+    case "tour": who = (body.tour && body.tour.name) || body.by; what = "Saved tour notes"; home = homeName(body.tour && body.tour.homeId); break;
+    case "radar":
+      what = { skip: "Hid a new match (Not for us)", "new": "Brought back a new match" }[body.decision] || "Changed a new match";
+      home = radarName(body.url); break;
+    case "settings": what = "Changed the monthly-cost numbers"; detail = body.downPct + "% down, rate " + (body.rate || "from Redfin"); break;
+    default: return;
+  }
+  const sheet = tab_(ACTIVITY_TAB, ["When", "Who", "What", "Home", "Details"], "#efe7fb");
+  const when = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd h:mm a");
+  sheet.insertRowAfter(1); // newest on top
+  sheet.getRange(2, 1, 1, 5).setValues([[when, whoName_(who), what, home, detail]]);
 }
 
 /* ---------- Drive times (Google Maps, built into Apps Script) ---------- */
