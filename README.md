@@ -2,7 +2,7 @@
 
 **Live page:** https://aminkhazri.github.io/house-hunt/
 
-One bright, simple page for our family of four, with a **Top 5 Homes** strip at the top, to see the homes we picked, ranked with **#1 at the top**. It was built for readers who aren't comfortable with technology: large text, one table, and three buttons per home (**Open in Redfin** opens the Redfin listing, **Map** opens Google Maps, **Remove** takes it off our list). On phones and tablets each row becomes its own block with the same labels.
+One bright, simple page for our family of four, to see the homes we picked, ranked with **#1 at the top**. It was built for readers who aren't comfortable with technology: large text, one table, and three buttons per home (**Open in Redfin** opens the Redfin listing, **Map** opens Google Maps, **Remove** takes it off our list). On phones and tablets each row becomes its own block with the same labels.
 
 ## Where the list lives
 
@@ -11,7 +11,7 @@ The page reads the **Homes** tab of our Google Sheet through the Apps Script web
 | You want to… | Do this |
 |---|---|
 | Remove a home | Tap **Remove**, say why (saved in the Sheet's `removedReason` column), and type the family passcode. The Sheet's `removed` cell becomes `TRUE`. **Undo** or "Bring it back" reverses it. |
-| Change the order | In **Top 5 Homes**, **press and hold** a home, then **drag** it to a new spot (keyboard: focus a card and use the arrow keys). Or change the `rank` numbers in the Sheet. Every move renumbers the list 1, 2, 3… |
+| Change the order | In **All our homes**, **press and hold** a home, then **drag** it to a new spot, or tap ▲ ▼. Or change the `rank` numbers in the Sheet. Every move renumbers the list 1, 2, 3… |
 | Add a home | Tap **＋ Add a home from Redfin**, paste the home's Redfin link, check the preview, and tap **Add to our list**. It goes to the bottom of the list. (Or add a row in the Sheet and give it a `rank`.) |
 | Change the notes | Edit `why`, `watch` or `deadline` in the Sheet. |
 
@@ -39,7 +39,7 @@ The Redfin phone app shares short links like `https://redf.in/rFnamM`, sometimes
 
 ## Changing the order
 
-In the **Top 5** or the full **All our homes** list, press and hold a home (on its number, photo or address) and drag it up or down. While you drag near the top or bottom of the screen, the page scrolls for you. Or tap the ▲ ▼ buttons under a home's number to move it one spot. Either way the Sheet's `rank` column is renumbered 1, 2, 3…
+In the **All our homes** list, press and hold a home (on its number, photo or address) and drag it up or down. While you drag near the top or bottom of the screen, the page scrolls for you. Or tap the ▲ ▼ buttons under a home's number to move it one spot. Either way the Sheet's `rank` column is renumbered 1, 2, 3…
 
 ## Speed
 
