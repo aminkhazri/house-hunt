@@ -231,9 +231,9 @@ The must-haves, budget, radar towns and price cap, down payment, rate, family vo
 
 ## Tour plan (Nov 19 to 21, 2026)
 
-The **🎟 Our tour plan** section at the top of the page shows Katie's schedule one day at a time: a cartoon park-style map with the homes numbered in visiting order, and a timeline with times, breaks and notes (who is away for a nap, which agent is showing).
+The **🎟 Our tour plan** section at the top of the page shows Katie's schedule one day at a time: a satellite map with the homes numbered in visiting order, and a timeline with times, breaks and notes (who is away for a nap, which agent is showing).
 
 - The schedule lives in the **Tour plan** tab of the Sheet (`day`, `time`, `stop`, `note`). A stop that starts with a house number and street is matched to that home on our list. Anything else ("Lunch") shows as a break. Run `setupTourPlan()` once to create the tab.
 - The hotel is the **Hotel for our tour** row in Settings (`Name = address`). The script looks up its location once with Apps Script's Maps geocoder and remembers it.
-- The map is an SVG the page draws itself: latitude and longitude are scaled to fit the day's stops, pins that would overlap are nudged apart, and labels are placed where there is room. Homes and the hotel are in their real spots, and the roads are a loose sketch.
+- The map is satellite imagery (Leaflet with Esri World Imagery tiles, plus road and place-name layers). Numbered pins show the visiting order, joined by a dashed line from the hotel. The line is straight between stops; the "Open the route in Google Maps" button gives real driving directions.
 - The section hides itself after the last day of the plan.

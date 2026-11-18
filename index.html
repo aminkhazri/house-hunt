@@ -551,46 +551,10 @@
     .tour-days button[aria-selected="true"] { background: var(--c); color: #fff; }
     .tour-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 18px; align-items: start; }
     @media (max-width: 900px) { .tour-grid { grid-template-columns: 1fr; } }
-    .tour-map svg { width: 100%; height: auto; display: block; filter: drop-shadow(0 8px 16px rgb(18 53 95 / .18)); font-family: var(--font); }
-    .tour-map * { stroke-linejoin: round; stroke-linecap: round; }
-    .tour-map .land { fill: #bfe2a0; stroke: #3a2e22; stroke-width: 3; }
-    .tour-map .frame { fill: none; stroke: #fff8e1; stroke-width: 1.6; stroke-dasharray: 5 5; opacity: .9; }
-    .tour-map .field.f0 { fill: #cdeaae; } .tour-map .field.f1 { fill: #b2d990; }
-    .tour-map .pond { fill: #8fd0ee; stroke: #3a2e22; stroke-width: 1.4; } .tour-map .ripple { fill: none; stroke: #fff; stroke-width: 1.2; }
-    .tour-map .rd-edge { fill: none; stroke: #3a2e22; stroke-width: 11; }
-    .tour-map .rd { fill: none; stroke: #9aa1a8; stroke-width: 8; }
-    .tour-map .rd-line { fill: none; stroke: #fff; stroke-width: 1.1; stroke-dasharray: 5 6; stroke-linecap: butt; }
-    .tour-map .shield rect { fill: #fff; stroke: #3a2e22; stroke-width: 1.4; }
-    .tour-map .shield text { font-size: 7.5px; font-weight: 900; fill: #3a2e22; text-anchor: middle; }
-    .tour-map .sign rect { fill: #c98f4e; stroke: #3a2e22; stroke-width: 1.4; } .tour-map .sign .post { fill: #8a5a2b; }
-    .tour-map .sign text { font: 700 8.5px var(--serif); fill: #fff8e1; text-anchor: middle; letter-spacing: .03em; }
-    .tour-map .tree .trunk { fill: #8a5a2b; stroke: #3a2e22; stroke-width: 1; }
-    .tour-map .tree .leaf { fill: #5fb04f; stroke: #3a2e22; stroke-width: 1.3; } .tour-map .tree .pine { fill: #3f9a5a; stroke: #3a2e22; stroke-width: 1.3; }
-    .tour-map .cloud { fill: #fff; stroke: #3a2e22; stroke-width: 1.2; opacity: .92; }
-    .tour-map .other rect { fill: #f1ece0; stroke: #3a2e22; stroke-width: 1; } .tour-map .other path { fill: #a9a39a; stroke: #3a2e22; stroke-width: 1; }
-    .tour-map .route { fill: none; stroke-width: 4; stroke-dasharray: .1 8.5; }
-    .tour-map .route.halo { stroke: #fff; stroke-width: 7; }
-    .tour-map .route.back { stroke: #3a2e22; stroke-width: 2; stroke-dasharray: .1 7; opacity: .45; }
-    .tour-map .car-body { fill: #f2c230; stroke: #3a2e22; stroke-width: 1.2; } .tour-map .car-top { fill: #bfe6f5; stroke: #3a2e22; stroke-width: 1.2; }
-    .tour-map .car circle { fill: #3a2e22; stroke: #fff; stroke-width: .8; }
-    .tour-map .leader { stroke: #3a2e22; stroke-width: 1.2; stroke-dasharray: 2 2.5; } .tour-map .spot { fill: #3a2e22; }
-    .tour-map .shadow { fill: rgb(40 60 20 / .28); }
-    .tour-map .tpin { cursor: pointer; }
-    .tour-map .tpin:hover .h-body, .tour-map .tpin:focus .h-body { fill: #fff3b8; }
-    .tour-map .h-body { fill: #fff8e7; stroke: #3a2e22; stroke-width: 1.5; }
-    .tour-map .h-roof { stroke: #3a2e22; stroke-width: 1.5; }
-    .tour-map .chim { fill: #c8553d; stroke: #3a2e22; stroke-width: 1.2; }
-    .tour-map .h-door { fill: #8a5a2b; stroke: #3a2e22; stroke-width: 1; }
-    .tour-map .h-win { fill: #bfe6f5; stroke: #3a2e22; stroke-width: 1; }
-    .tour-map .badge { stroke: #3a2e22; stroke-width: 1.5; }
-    .tour-map .num { font-size: 12px; font-weight: 900; fill: #fff; text-anchor: middle; }
-    .tour-map .when { font-size: 9px; font-weight: 900; fill: #2b2118; text-anchor: middle; paint-order: stroke; stroke: #fff8e1; stroke-width: 3.2px; }
-    .tour-map .ht-body { fill: #e8eef7; stroke: #3a2e22; stroke-width: 1.5; } .tour-map .ht-win { fill: #ffd95e; stroke: #3a2e22; stroke-width: .9; }
-    .tour-map .ht-sign { fill: #12355f; stroke: #3a2e22; stroke-width: 1.3; } .tour-map .ht-t { font-size: 6.6px; font-weight: 900; fill: #fff; text-anchor: middle; letter-spacing: .08em; }
-    .tour-map .ribbon path { stroke: #3a2e22; stroke-width: 1.5; } .tour-map .ribbon text { font-size: 10px; font-weight: 900; fill: #fff; letter-spacing: .08em; }
-    .tour-map .compass circle { fill: #fff8e1; stroke: #3a2e22; stroke-width: 1.4; }
-    .tour-map .compass .ns, .tour-map .compass .ew { fill: #d9c79b; stroke: #3a2e22; stroke-width: .8; } .tour-map .compass .n { fill: #c0264b; stroke: #3a2e22; stroke-width: .8; }
-    .tour-map .compass text { font-size: 7.5px; font-weight: 900; fill: #3a2e22; text-anchor: middle; paint-order: stroke; stroke: #bfe2a0; stroke-width: 2.5px; }
+    .tour-map { height: min(420px, 62vh); min-height: 300px; border-radius: 16px; border: 1px solid var(--rule); background: #dfe6dc; box-shadow: 0 8px 16px rgb(18 53 95 / .14); overflow: hidden; z-index: 0; }
+    .sat-pin { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; color: #fff; font: 900 17px var(--font); border: 3px solid #fff; box-shadow: 0 2px 8px rgb(0 0 0 / .55); }
+    .sat-pin.hotel { background: #fff; font-size: 18px; border-color: var(--navy); }
+    .sat-time { position: absolute; top: 36px; left: 50%; transform: translateX(-50%); white-space: nowrap; font: 900 12px var(--font); color: #fff; text-shadow: 0 0 3px #000, 0 0 3px #000, 0 1px 2px #000; }
     .tl { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
     .tl li { display: grid; grid-template-columns: 5.2em 28px 1fr; gap: 4px 10px; align-items: start; background: var(--paper); border: 1px solid var(--rule); border-radius: 12px; padding: 9px 12px; }
     .tl li.brk { grid-template-columns: 5.2em 1fr; background: #fdf6e3; border-style: dashed; }
@@ -1868,17 +1832,18 @@
 
     /* ---------- Map (Leaflet + OpenStreetMap, loaded only when someone opens it) ---------- */
     const mapState = { map: null, layer: null, dragging: false };
+    let leafletLoading = null;
     function loadLeaflet() {
       if (window.L) return Promise.resolve();
-      return new Promise((ok, fail) => {
+      return leafletLoading || (leafletLoading = new Promise((ok, fail) => {
         const css = document.createElement("link");
         css.rel = "stylesheet"; css.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
         document.head.append(css);
         const js = document.createElement("script");
         js.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
-        js.onload = ok; js.onerror = fail;
+        js.onload = ok; js.onerror = () => { leafletLoading = null; fail(); };
         document.head.append(js);
-      });
+      }));
     }
     function drawPins() {
       const L = window.L;
@@ -1971,137 +1936,45 @@
         });
     }
 
-    // Roads and towns for the sketch. Homes and the hotel sit at their real spots; the roads are drawn loosely.
-    const ROADS = [
-      { name: "I-40", pts: [[35.725, -78.615], [35.66, -78.585], [35.607, -78.563], [35.555, -78.535], [35.47, -78.515]] },
-      { name: "NC 42", pts: [[35.585, -78.80], [35.578, -78.70], [35.592, -78.62], [35.607, -78.563], [35.63, -78.50], [35.648, -78.455], [35.668, -78.40], [35.69, -78.32]] },
-      { name: "US 70", pts: [[35.71, -78.59], [35.68, -78.52], [35.652, -78.462], [35.625, -78.41], [35.59, -78.34]] },
-      { name: "NC 210", pts: [[35.505, -78.80], [35.507, -78.739], [35.515, -78.66], [35.512, -78.59], [35.52, -78.52], [35.53, -78.44]] },
-    ];
-    const TOWNS = [["Clayton", 35.651, -78.457], ["Angier", 35.507, -78.739], ["Willow Spring", 35.563, -78.672], ["Garner", 35.705, -78.615]];
-
-    function tourMapSvg(day, color) {
+    /* The day's map: satellite photos (Leaflet + Esri World Imagery) with numbered pins in visiting order. */
+    const tourMap = { map: null, layer: null, drawn: "" };
+    async function drawTourMap(day, color) {
       const stops = stopsFor(day).filter((s) => s.home && s.home.lat && s.home.lng);
-      const pts = stops.map((s) => [s.home.lat, s.home.lng]);
-      if (plan.hotel) pts.push([plan.hotel.lat, plan.hotel.lng]);
-      if (!pts.length) return "";
-      const W = 400, H = 300, M = 48;
-      const [la0, la1, lo0, lo1] = [Math.min(...pts.map((p) => p[0])), Math.max(...pts.map((p) => p[0])), Math.min(...pts.map((p) => p[1])), Math.max(...pts.map((p) => p[1]))];
-      const cos = Math.cos(((la0 + la1) / 2) * Math.PI / 180);
-      const k = Math.min((W - 2 * M) / Math.max((lo1 - lo0) * cos, 0.02), (H - 2 * M) / Math.max(la1 - la0, 0.02));
-      const cx = (lo0 + lo1) / 2, cy = (la0 + la1) / 2;
-      const P = (lat, lng) => [W / 2 + (lng - cx) * cos * k, H / 2 + 6 - (lat - cy) * k];
-      const f = (n) => n.toFixed(1);
-
-      // Houses start at their true spot, then nudge apart so neighbours don't sit on top of each other.
-      const pins = stops.map((s) => { const [x, y] = P(s.home.lat, s.home.lng); return { s, x, y, tx: x, ty: y }; });
-      const hotel = plan.hotel ? (() => { const [x, y] = P(plan.hotel.lat, plan.hotel.lng); return { x, y, tx: x, ty: y, hotel: true }; })() : null;
-      const all = hotel ? pins.concat([hotel]) : pins;
-      for (let it = 0; it < 50; it++) for (let i = 0; i < all.length; i++) for (let j = i + 1; j < all.length; j++) {
-        const a = all[i], b = all[j]; let dx = b.x - a.x, dy = b.y - a.y; let d = Math.hypot(dx, dy * 0.56);
-        if (d >= 34) continue;
-        if (d < 0.01) { dx = 1; dy = 0.3; d = 1; }
-        const push = (34 - d) / 2; a.x -= (dx / d) * push; a.y -= (dy / d) * push; b.x += (dx / d) * push; b.y += (dy / d) * push;
+      const sig = [day, color, plan.hotel ? plan.hotel.lat + "," + plan.hotel.lng : "", ...stops.map((s) => s.home.id + "@" + s.time)].join("|");
+      if (sig === tourMap.drawn) return;   // nothing changed, so leave the map (and where they've zoomed) alone
+      tourMap.drawn = sig;
+      try { await loadLeaflet(); } catch { tourMap.drawn = ""; $("tour-map").textContent = "The map couldn't load. Please refresh the page."; return; }
+      if (sig !== tourMap.drawn) return;   // they tapped another day while it was loading
+      const L = window.L;
+      if (!tourMap.map) {
+        const touch = matchMedia("(pointer: coarse)").matches;
+        // On phones a one-finger drag scrolls the page, and two fingers move or zoom the map.
+        tourMap.map = L.map("tour-map", { scrollWheelZoom: false, dragging: !touch, zoomSnap: 0.25 });
+        const esri = "https://server.arcgisonline.com/ArcGIS/rest/services/";
+        L.tileLayer(esri + "World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, attribution: "Imagery © Esri, Maxar, Earthstar Geographics" }).addTo(tourMap.map);
+        L.tileLayer(esri + "Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, opacity: 0.9 }).addTo(tourMap.map);
+        L.tileLayer(esri + "Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19 }).addTo(tourMap.map);
       }
-      all.forEach((p) => { p.x = Math.max(22, Math.min(W - 22, p.x)); p.y = Math.max(46, Math.min(H - 34, p.y)); });
-
-      // The day's path: hotel, then each home in order, with a gentle wobble like a park map.
-      const chain = (hotel ? [hotel] : []).concat(pins);
-      let d = "", car = "";
-      const routePts = [];
-      chain.forEach((p, i) => {
-        if (!i) { d += `M${f(p.x)} ${f(p.y)}`; return; }
-        const a = chain[i - 1], len = Math.hypot(p.x - a.x, p.y - a.y) || 1;
-        const off = Math.min(20, len * 0.16) * (i % 2 ? 1 : -1);
-        const qx = (a.x + p.x) / 2 - ((p.y - a.y) / len) * off, qy = (a.y + p.y) / 2 + ((p.x - a.x) / len) * off;
-        d += ` Q${f(qx)} ${f(qy)} ${f(p.x)} ${f(p.y)}`;
-        for (let t = 0.2; t < 1; t += 0.2) routePts.push([(1 - t) * (1 - t) * a.x + 2 * t * (1 - t) * qx + t * t * p.x, (1 - t) * (1 - t) * a.y + 2 * t * (1 - t) * qy + t * t * p.y]);
-        if (!car && len > 80) { // a little car partway along the first long stretch
-          const x = 0.25 * a.x + 0.5 * qx + 0.25 * p.x, y = 0.25 * a.y + 0.5 * qy + 0.25 * p.y, flip = p.x < a.x ? -1 : 1;
-          car = `<g class="car" transform="translate(${f(x)} ${f(y - 3)}) scale(${flip} 1)"><path class="car-top" d="M-4 -3 L-2 -7 H3.5 L6 -3 Z"/><rect class="car-body" x="-8" y="-3.5" width="16" height="6.5" rx="3"/><circle cx="-4.2" cy="3.2" r="2.3"/><circle cx="4.2" cy="3.2" r="2.3"/></g>`;
-        }
+      if (tourMap.layer) tourMap.layer.remove();
+      const layer = tourMap.layer = L.layerGroup().addTo(tourMap.map);
+      const at = stops.map((s) => [s.home.lat, s.home.lng]);
+      const hotel = plan.hotel ? [plan.hotel.lat, plan.hotel.lng] : null;
+      const path = hotel ? [hotel, ...at] : at;
+      // The order we visit them in: a white line underneath so the coloured dashes show up on the photo.
+      L.polyline(path, { color: "#fff", weight: 7, opacity: 0.85, interactive: false }).addTo(layer);
+      L.polyline(path, { color, weight: 4, dashArray: "1 9", lineCap: "round", interactive: false }).addTo(layer);
+      if (hotel && at.length) L.polyline([at[at.length - 1], hotel], { color: "#fff", weight: 2.5, dashArray: "4 8", opacity: 0.8, interactive: false }).addTo(layer);
+      if (hotel) L.marker(hotel, { icon: L.divIcon({ className: "", html: `<span class="sat-pin hotel">🏨</span>`, iconSize: [34, 34], iconAnchor: [17, 17] }), title: plan.hotel.name, zIndexOffset: -50 })
+        .bindPopup(`<b>${esc(plan.hotel.name)}</b><br>${esc(plan.hotel.address)}`).addTo(layer);
+      stops.forEach((s) => {
+        const h = s.home, t = esc(s.time.replace(/\s*[AP]M/i, ""));
+        L.marker([h.lat, h.lng], { icon: L.divIcon({ className: "", html: `<span class="sat-pin" style="background:${color}">${s.n}</span><span class="sat-time">${t}</span>`, iconSize: [34, 34], iconAnchor: [17, 17] }),
+          title: `Stop ${s.n}: ${h.address} at ${s.time}`, zIndexOffset: 100 + s.n })
+          .bindPopup(`${safeUrl(h.photoUrl) ? `<img src="${esc(h.photoUrl)}" alt="">` : ""}<b>${s.n}. ${esc(h.address)}</b><br>${esc(s.time)} · ${h.price ? money(h.price) : ""}<br><button type="button" data-pinjump="${esc(h.id)}">See it in our list</button>`)
+          .addTo(layer);
       });
-      // Everything else finds a free spot: farthest from the houses and from things already placed.
-      const taken = all.map((p) => [p.x, p.y - 6]).concat(routePts);
-      const room = (x, y) => Math.min(...taken.map(([a, b]) => Math.hypot((a - x) * 0.75, b - y)));
-      const title = niceDay(day, { weekday: "long" }).toUpperCase(), tw = title.length * 7 + 28;
-      taken.push([14 + tw * 0.25, 22], [14 + tw * 0.75, 22], [W - 30, 32]); // the ribbon and the compass
-
-      const line = (r) => r.pts.map((p, i) => (i ? "L" : "M") + P(p[0], p[1]).map(f).join(" ")).join(" ");
-      const roads = ROADS.map((r) => `<path d="${line(r)}" class="rd-edge"/>`).join("") + ROADS.map((r) => `<path d="${line(r)}" class="rd"/><path d="${line(r)}" class="rd-line"/>`).join("");
-      const shields = ROADS.map((r) => {
-        const cand = [];
-        r.pts.forEach((p, i) => { if (!i) return; const [x0, y0] = P(r.pts[i - 1][0], r.pts[i - 1][1]), [x1, y1] = P(p[0], p[1]);
-          for (let t = 0; t <= 1; t += 0.125) cand.push([x0 + (x1 - x0) * t, y0 + (y1 - y0) * t]); });
-        const inside = cand.filter(([x, y]) => x > 30 && x < W - 30 && y > 18 && y < H - 18);
-        if (!inside.length) return "";
-        const [x, y] = inside.sort((a, b) => room(b[0], b[1]) - room(a[0], a[1]))[0];
-        if (room(x, y) < 24) return "";
-        taken.push([x, y]);
-        return `<g transform="translate(${f(x)} ${f(y)})" class="shield"><rect x="-16" y="-7" width="32" height="14" rx="4"/><text y="3.4">${r.name}</text></g>`;
-      }).join("");
-      const towns = TOWNS.map(([name, la, lo]) => { // a wooden signpost for each town
-        const [x0, y0] = P(la, lo); const w = name.length * 5.7 + 14;
-        // Try the town's own spot, then a few spots just around it, and take the roomiest.
-        const spots = [[0, -10], [0, 22], [0, -34], [-40, -6], [40, -6], [-36, 22], [36, 22], [0, 44], [-60, 10], [60, 10]].map(([dx, dy]) => [x0 + dx, y0 + dy])
-          .filter(([x, y]) => x > w / 2 + 10 && x < W - w / 2 - 10 && y > 22 && y < H - 24)
-          .sort((a, b) => Math.min(room(b[0] - w / 4, b[1]), room(b[0] + w / 4, b[1])) - Math.min(room(a[0] - w / 4, a[1]), room(a[0] + w / 4, a[1])));
-        if (!spots.length) return "";
-        const [x, y] = spots[0];
-        if (Math.min(room(x - w / 4, y), room(x + w / 4, y)) < 17) return "";
-        taken.push([x - w / 4, y], [x + w / 4, y]);
-        return `<g transform="translate(${f(x)} ${f(y)})" class="sign"><rect class="post" x="-1.5" y="5" width="3" height="11"/><rect x="${f(-w / 2)}" y="-8" width="${f(w)}" height="15" rx="3"/><text y="3.2">${name}</text></g>`;
-      }).join("");
-      // Scenery, always in the same places: fields, a pond, trees and a couple of clouds.
-      const free = (x, y, need) => room(x, y) >= need;
-      const fields = [[0.16, 0.3, 46, 26], [0.78, 0.25, 54, 28], [0.5, 0.82, 60, 26], [0.2, 0.78, 40, 22], [0.85, 0.7, 42, 24]]
-        .map(([a, b, rx, ry], i) => `<ellipse class="field f${i % 2}" cx="${f(a * W)}" cy="${f(b * H)}" rx="${rx}" ry="${ry}"/>`).join("");
-      const pondAt = [[0.12, 0.84], [0.88, 0.86], [0.1, 0.4], [0.9, 0.5], [0.5, 0.14]].map(([a, b]) => [a * W, b * H]).sort((p, q) => room(q[0], q[1]) - room(p[0], p[1]))[0];
-      const pond = free(pondAt[0], pondAt[1], 40) ? `<g transform="translate(${f(pondAt[0])} ${f(pondAt[1])})"><path class="pond" d="M-20 0 C-22 -12 -6 -14 2 -10 C12 -15 24 -8 21 2 C24 12 6 14 -2 10 C-12 14 -20 10 -20 0 Z"/><path class="ripple" d="M-9 -2 q4 -3 8 0 M2 4 q4 -3 8 0"/></g>` : "";
-      if (pond) taken.push(pondAt);
-      const trees = [[0.06, 0.18, 0], [0.24, 0.9, 1], [0.4, 0.12, 1], [0.62, 0.92, 0], [0.93, 0.3, 1], [0.84, 0.74, 0], [0.3, 0.5, 0], [0.7, 0.42, 1], [0.05, 0.62, 1], [0.55, 0.3, 0], [0.45, 0.62, 1], [0.95, 0.9, 0], [0.16, 0.08, 0], [0.74, 0.1, 1], [0.36, 0.78, 0], [0.66, 0.68, 1]]
-        .filter(([a, b]) => free(a * W, b * H, 26))
-        .map(([a, b, kind]) => `<g transform="translate(${f(a * W)} ${f(b * H)})" class="tree">` + (kind
-          ? `<rect class="trunk" x="-1.4" y="5" width="2.8" height="5"/><path class="pine" d="M0 -11 L7 0 H3.5 L8.5 6 H-8.5 L-3.5 0 H-7 Z"/>`
-          : `<rect class="trunk" x="-1.5" y="4" width="3" height="7"/><path class="leaf" d="M-8 2 C-11 -4 -5 -9 -1 -7 C2 -12 10 -8 8 -2 C12 2 6 7 1 5 C-3 8 -9 6 -8 2 Z"/>`) + `</g>`).join("");
-      const clouds = [[0.34, 0.07], [0.66, 0.06], [0.07, 0.95]].filter(([a, b]) => free(a * W, b * H, 30))
-        .map(([a, b]) => `<path class="cloud" transform="translate(${f(a * W)} ${f(b * H)})" d="M-14 4 C-19 4 -19 -4 -13 -4 C-12 -10 -3 -11 -1 -6 C3 -11 12 -8 11 -3 C17 -3 17 4 12 4 Z"/>`).join("");
-      // Homes we visit on other days, as small grey cottages.
-      const todayIds = new Set(stops.map((s) => s.home.id));
-      const others = plan.stops.map((s) => homes.find((h) => !h.removed && homeKey(h.address) === homeKey(s.stop))).filter((h) => h && h.lat && !todayIds.has(h.id))
-        .map((h) => { const [x, y] = P(h.lat, h.lng); return x > 10 && x < W - 10 && y > 12 && y < H - 10 ? `<g class="other" transform="translate(${f(x)} ${f(y)})"><rect x="-4" y="0" width="8" height="5.5"/><path d="M-6 0.5 L0 -5 L6 0.5 Z"/></g>` : ""; }).join("");
-
-      const last = pins[pins.length - 1];
-      const back = hotel && last ? `<path class="route back" d="M${f(last.x)} ${f(last.y)} L${f(hotel.x)} ${f(hotel.y)}"/>` : "";
-      const leaders = all.filter((p) => Math.hypot(p.x - p.tx, p.y - p.ty) > 9).map((p) => `<line class="leader" x1="${f(p.tx)}" y1="${f(p.ty)}" x2="${f(p.x)}" y2="${f(p.y)}"/><circle class="spot" cx="${f(p.tx)}" cy="${f(p.ty)}" r="2.2"/>`).join("");
-      const house = (p) => `<g class="tpin" data-jump="${esc(p.s.home.id)}" transform="translate(${f(p.x)} ${f(p.y)})" role="link" tabindex="0" aria-label="Stop ${p.s.n}: ${esc(p.s.home.address)} at ${esc(p.s.time)}">
-          <ellipse class="shadow" cy="12" rx="15" ry="3.5"/>
-          <rect class="chim" x="5" y="-11" width="4" height="7"/>
-          <rect class="h-body" x="-10.5" y="-2" width="21" height="13.5" rx="1.5"/>
-          <path class="h-roof" fill="${color}" d="M-14.5 -0.5 L0 -13 L14.5 -0.5 Z"/>
-          <rect class="h-door" x="-2.6" y="4" width="5.2" height="7.5" rx="1"/>
-          <rect class="h-win" x="-8.4" y="1.6" width="4.2" height="4.2"/><rect class="h-win" x="4.2" y="1.6" width="4.2" height="4.2"/>
-          <circle class="badge" cy="-23" r="9.5" fill="${color}"/><text class="num" y="-19">${p.s.n}</text>
-          </g>`;
-      const whens = pins.map((p) => `<text class="when" x="${f(p.x)}" y="${f(p.y + 24.5)}">${esc(p.s.time.replace(/\s*[AP]M/i, ""))}</text>`).join("");
-      const hotelHtml = hotel ? `<g class="hotel" transform="translate(${f(hotel.x)} ${f(hotel.y)})">
-          <ellipse class="shadow" cy="13" rx="16" ry="3.5"/>
-          <rect class="ht-body" x="-11" y="-15" width="22" height="28" rx="2"/>
-          ${[-10, -3, 4].map((y) => `<rect class="ht-win" x="-7.5" y="${y}" width="5.5" height="4.2"/><rect class="ht-win" x="2" y="${y}" width="5.5" height="4.2"/>`).join("")}
-          <rect class="ht-sign" x="-15" y="-25" width="30" height="10" rx="2.5"/><text class="ht-t" y="-17.6">HOTEL</text></g>` : "";
-      // Draw from the top of the picture down, so a house in front overlaps the one behind it.
-      const front = pins.slice().sort((a, b) => a.y - b.y).map(house).join("");
-
-      return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Cartoon map of ${esc(niceDay(day))}: ${pins.length} homes in visiting order">
-        <clipPath id="tm-clip"><rect x="4" y="4" width="${W - 8}" height="${H - 8}" rx="15"/></clipPath>
-        <rect class="land" x="2" y="2" width="${W - 4}" height="${H - 4}" rx="17"/>
-        <g clip-path="url(#tm-clip)">${fields}${pond}${roads}${trees}${clouds}</g>
-        <rect class="frame" x="8" y="8" width="${W - 16}" height="${H - 16}" rx="11"/>
-        ${shields}${towns}${others}
-        <path class="route halo" d="${d}"/><path class="route" stroke="${color}" d="${d}"/>${back}${car}${leaders}${hotelHtml}${front}${whens}
-        <g transform="translate(14 12)" class="ribbon"><path fill="${color}" d="M0 0 H${f(tw)} L${f(tw - 6)} 9.5 L${f(tw)} 19 H0 Z"/><text x="9" y="13.4">${title}</text></g>
-        <g transform="translate(${W - 30} 32)" class="compass"><circle r="13"/><path class="ns" d="M0 -10 L3 0 L0 10 L-3 0 Z"/><path class="ew" d="M-10 0 L0 -3 L10 0 L0 3 Z"/><path class="n" d="M0 -10 L3 0 H-3 Z"/><text y="-15.5">N</text></g>
-      </svg>`;
+      tourMap.map.invalidateSize();
+      if (path.length) tourMap.map.fitBounds(path, { padding: [38, 38], maxZoom: 15 });
     }
 
     function tourRouteLink(stops) {
@@ -2125,7 +1998,7 @@
       $("tour-days").innerHTML = days.map((d, i) => `<button type="button" role="tab" aria-selected="${d === planDay}" data-day="${d}" style="--c:${DAY_COLORS[i % DAY_COLORS.length]}">
         <b>${niceDay(d, { weekday: "short" })}</b> ${niceDay(d, { month: "short", day: "numeric" })}${d === today ? " · today" : ""}</button>`).join("");
       const stops = stopsFor(planDay);
-      $("tour-map").innerHTML = tourMapSvg(planDay, color);
+      drawTourMap(planDay, color);
       // On the day itself, point at the next stop.
       const now = new Date().getHours() * 60 + new Date().getMinutes();
       const next = planDay === today ? stops.find((s) => (minutesOf(s.time) ?? 0) + 20 > now) : null;
@@ -2147,7 +2020,6 @@
       $("tour-route").textContent = `🚗 Open ${niceDay(planDay, { weekday: "long" })}'s route in Google Maps`;
     }
     $("tour-days").addEventListener("click", (e) => { const b = e.target.closest("[data-day]"); if (b) { planDay = b.dataset.day; renderTour(); } });
-    $("tour-map").addEventListener("keydown", (e) => { const g = e.target.closest("[data-jump]"); if (g && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); jumpTo(g.dataset.jump); } });
 
     load();
   </script>
