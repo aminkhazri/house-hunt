@@ -160,41 +160,15 @@
 
     .overview { margin: 6px 0 26px; }
     .overview h2, .list-head h2 { margin: 0 0 12px; font-size: 1.4rem; font-weight: 900; }
-    .top5 { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; }
-    .top5 img { width: 100%; height: 110px; object-fit: cover; border-radius: 10px; background: var(--line); }
-    .top5 .n { position: absolute; top: 4px; left: 4px; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; background: var(--sky); color: #fff; font-weight: 900; font-size: 1.15rem; border: 3px solid #fff; }
-    .top5 li:first-child .n { background: var(--sun); color: var(--ink); }
-    .top5 strong { font-size: 1rem; line-height: 1.25; }
-    .top5 .p { font-weight: 900; font-size: 1.1rem; }
-    .top5 .t { color: var(--muted); font-size: .9rem; }
     .list-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; }
     .list-head h2 { margin: 0; }
 
-    .top5 .tile {
-      display: grid; gap: 6px; height: 100%; color: var(--ink); cursor: grab;
-      background: var(--paper); border: 2px solid var(--line); border-radius: 16px; padding: 10px; position: relative;
-      box-shadow: 0 4px 14px rgb(30 111 217 / .06);
-      -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
-      transition: transform .18s ease, box-shadow .18s ease;
-    }
-    .top5 .tile img { -webkit-user-drag: none; pointer-events: none; }
-    .top5 li:first-child .tile { border-color: var(--sun); background: var(--sun-soft); border-width: 3px; }
-    .top5 .tile.pressing { transform: scale(.97); }
-    .top5 .tile.dragging {
-      z-index: 5; cursor: grabbing; transition: none;
-      box-shadow: 0 18px 40px rgb(15 40 80 / .28); outline: 3px solid var(--sky);
-    }
-    .top5 .grip { position: absolute; top: 8px; right: 10px; color: var(--muted); font-size: 1.1rem; letter-spacing: -2px; }
-    .drag-tip { margin: -4px 0 12px; color: var(--muted); font-size: 1rem; }
-    .top5 li.flash .tile { animation: moved 1.2s ease-out; }
+    .drag-tip { margin: -4px 0 14px; color: var(--muted); font-size: 1rem; }
     .btn:disabled { opacity: .45; cursor: default; }
     tr.moved td, tr.moved + tr.c-row td { animation: moved 1.2s ease-out; }
     @keyframes moved { 0%, 30% { background: #e4efff; } }
 
     @media (max-width: 1180px) {
-      .top5 { grid-template-columns: 1fr; gap: 10px; }
-      .top5 .tile { grid-template-columns: 110px 1fr; align-items: center; column-gap: 12px; }
-      .top5 img { grid-row: span 3; height: 82px; }
     }
 
     .add-btn {
@@ -364,7 +338,7 @@
     .rank b { background: #fff; color: var(--navy); border: 2px solid var(--navy); font-family: var(--serif); }
     tr.top .rank b { background: var(--sun); border-color: #c99b2e; color: var(--navy); }
     .badge { color: #8a6a12; letter-spacing: .04em; }
-    .photo img, .top5 img { border: 1px solid var(--line); }
+    .photo img { border: 1px solid var(--line); }
     .home strong { color: var(--navy); }
     .price strong { color: var(--ink); }
     .safety b { background: var(--leaf); border-radius: 6px; }
@@ -389,13 +363,6 @@
     .c-add { border: 0; background: none; padding: 3px 2px; color: var(--sky); font-weight: 800; text-decoration: underline; text-decoration-color: var(--rule); text-underline-offset: 3px; }
     .c-add:hover { background: none; color: var(--navy); text-decoration-color: currentColor; }
 
-    /* Top 5 cards */
-    .top5 .tile { border: 1px solid var(--rule); border-radius: 14px; box-shadow: 0 6px 18px rgb(18 53 95 / .06); }
-    .top5 li:first-child .tile { border: 2px solid var(--sun); background: var(--sun-soft); }
-    .top5 .n { background: #fff; color: var(--navy); border: 2px solid var(--navy); font-family: var(--serif); }
-    .top5 li:first-child .n { background: var(--sun); border-color: #c99b2e; }
-    .top5 strong { color: var(--navy); }
-    .top5 .tile.dragging { outline: 2px solid var(--navy); }
 
     /* Removed homes */
     .removed { border: 1px dashed var(--rule); background: rgb(255 255 255 / .85); }
@@ -603,12 +570,6 @@
       <button type="button" class="tool more-cards" id="radar-more" hidden></button>
     </section>
 
-    <section class="overview" aria-labelledby="top5-title">
-      <h2 id="top5-title">Top 5 Homes</h2>
-      <p class="drag-tip">Press and hold any home, here or in the list below, then drag it up or down to change the order. You can also tap ▲ ▼.</p>
-      <ol class="top5" id="top5"></ol>
-    </section>
-
     <div class="list-head">
       <h2>All our homes</h2>
       <div class="tools" style="margin:0">
@@ -616,6 +577,7 @@
         <button type="button" class="add-btn" id="add-btn">＋ Add a home from Redfin</button>
       </div>
     </div>
+    <p class="drag-tip">Press and hold any home, then drag it up or down to change the order. You can also tap ▲ ▼.</p>
 
     <div id="map-panel" hidden>
       <div id="map" role="region" aria-label="Map of our homes"></div>
@@ -944,22 +906,9 @@
       }).join("");
     }
 
-    function top5Html(h, i) {
-      const photo = safeUrl(h.photoUrl);
-      return `<li data-id="${esc(h.id)}"><div class="tile" tabindex="0" role="button"
-          aria-label="#${i + 1} ${esc(h.address)}. Press and hold, then drag to change the order, or use the arrow keys.">
-        <span class="n">${i + 1}</span><span class="grip" aria-hidden="true">⋮⋮</span>
-        ${photo ? `<img src="${esc(photo)}" alt="Front of ${esc(h.address)}">` : "<span></span>"}
-        <strong>${esc(h.address)}</strong>
-        <span class="p">${h.price ? money(h.price) : ""}${priceChange(h) ? ` <b class="chip ${priceChange(h).dir}${priceChange(h).fresh ? " fresh" : ""}">${priceChange(h).dir === "down" ? "▼" : "▲"} ${money(priceChange(h).amount)}</b>` : ""}</span>
-        <span class="t">${esc(h.city)} · ${h.beds ?? "?"} bed · Safety ${esc(safetyOf(h).grade || "?")}${voteSummary(h).count ? ` · <span class="hearts">♥</span> ${voteSummary(h).avg}` : ""}</span>
-      </div></li>`;
-    }
-
     let areaRank = () => "";
     function render() {
       const list = ourList();
-      $("top5").innerHTML = list.slice(0, 5).map(top5Html).join("");
       const ranks = areaRanks(list);
       areaRank = (zip) => {
         const n = ranks.rankOf(zip);
@@ -1022,7 +971,7 @@
     }
 
     // Don't redraw under someone's finger: wait until they finish dragging or close a box.
-    const busy = () => drag || rowDrag || press || rowPress || document.querySelector("dialog[open]") || mapState.dragging;
+    const busy = () => rowDrag || rowPress || document.querySelector("dialog[open]") || mapState.dragging;
 
     async function load() {
       const saved = store.get(LIST_KEY);
@@ -1170,106 +1119,9 @@
       }
     }
 
-    /* ---------- Top 5: press and hold, then drag to reorder ---------- */
-    const HOLD_MS = 450;   // how long to press before the card lifts
+    /* ---------- Press and hold timing (used by the list below) ---------- */
+    const HOLD_MS = 450;   // how long to press before a home lifts
     const SLOP = 10;       // finger can wiggle this many pixels before we treat it as scrolling
-    let press = null;      // { li, tile, x, y, timer }
-    let drag = null;       // { li, tile, grabX, grabY, from }
-
-    const top5 = $("top5");
-    const tiles = () => [...top5.children];
-
-    function cancelPress() {
-      if (!press) return;
-      clearTimeout(press.timer);
-      press.tile.classList.remove("pressing");
-      press = null;
-    }
-
-    top5.addEventListener("pointerdown", (e) => {
-      if (e.button > 0) return;
-      const li = e.target.closest("li[data-id]");
-      if (!li) return;
-      const tile = li.querySelector(".tile");
-      press = { li, tile, x: e.clientX, y: e.clientY, pointerId: e.pointerId };
-      tile.classList.add("pressing");
-      press.timer = setTimeout(() => startDrag(e.pointerId), HOLD_MS);
-    });
-
-    function startDrag(pointerId) {
-      if (!press) return;
-      const { li, tile, x, y } = press;
-      press.tile.classList.remove("pressing");
-      press = null;
-      const r = li.getBoundingClientRect();
-      drag = { li, tile, grabX: x - r.left, grabY: y - r.top, from: tiles().indexOf(li), x, y };
-      tile.classList.add("dragging");
-      try { top5.setPointerCapture(pointerId); } catch {}
-      if (navigator.vibrate) navigator.vibrate(25);
-    }
-
-    // While dragging, stop the page from scrolling under the finger.
-    top5.addEventListener("touchmove", (e) => { if (drag) e.preventDefault(); }, { passive: false });
-
-    top5.addEventListener("pointermove", (e) => {
-      if (press && Math.hypot(e.clientX - press.x, e.clientY - press.y) > SLOP) cancelPress(); // they're scrolling
-      if (!drag) return;
-      drag.x = e.clientX; drag.y = e.clientY;
-
-      // Which spot is the finger over? Move the card there in the list.
-      const over = tiles().find((li) => {
-        if (li === drag.li) return false;
-        const r = li.getBoundingClientRect();
-        return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
-      });
-      if (over) {
-        const list = tiles();
-        const before = list.indexOf(over) < list.indexOf(drag.li);
-        top5.insertBefore(drag.li, before ? over : over.nextSibling);
-        renumberTop5();
-      }
-      followFinger();
-    });
-
-    /** Keep the lifted card under the finger, wherever its slot in the list now is. */
-    function followFinger() {
-      drag.tile.style.transform = "none";
-      const r = drag.li.getBoundingClientRect();
-      const dx = drag.x - drag.grabX - r.left;
-      const dy = drag.y - drag.grabY - r.top;
-      drag.tile.style.transform = `translate(${dx}px, ${dy}px) scale(1.04)`;
-    }
-
-    function renumberTop5() {
-      tiles().forEach((li, i) => { li.querySelector(".n").textContent = i + 1; });
-    }
-
-    async function endDrag() {
-      cancelPress();
-      if (!drag) return;
-      const { li, tile, from } = drag;
-      drag = null;
-      tile.classList.remove("dragging");
-      tile.style.transform = "";
-      const to = tiles().indexOf(li);
-      if (to === from) return;
-      await moveTo(li.dataset.id, to);
-    }
-    ["pointerup", "pointercancel"].forEach((t) => top5.addEventListener(t, endDrag));
-    top5.addEventListener("contextmenu", (e) => { if (e.target.closest("li[data-id]")) e.preventDefault(); });
-
-    // Keyboard: arrow keys move the focused card one spot.
-    top5.addEventListener("keydown", (e) => {
-      const li = e.target.closest("li[data-id]");
-      if (!li) return;
-      const i = tiles().indexOf(li);
-      const step = { ArrowUp: -1, ArrowLeft: -1, ArrowDown: 1, ArrowRight: 1 }[e.key];
-      if (step && i + step >= 0 && i + step < tiles().length) {
-        e.preventDefault();
-        moveTo(li.dataset.id, i + step).then(() => top5.querySelector(`li[data-id="${CSS.escape(li.dataset.id)}"] .tile`)?.focus());
-      }
-      if (e.key === "Enter") document.getElementById("home-" + li.dataset.id)?.scrollIntoView({ behavior: "smooth", block: "center" });
-    });
 
     /* ---------- All our homes: press and hold a row, or use ▲ ▼ ---------- */
     const rowsEl = $("rows");
@@ -1402,7 +1254,6 @@
       list.splice(to, 0, home);
       list.forEach((h, n) => { h.rank = n + 1; });
       render();
-      top5.querySelector(`li[data-id="${CSS.escape(id)}"]`)?.classList.add("flash");
       document.getElementById("home-" + id)?.classList.add("moved");
       try {
         await send("moveTo", id, { position: to + 1 }); // no passcode needed to change the order
