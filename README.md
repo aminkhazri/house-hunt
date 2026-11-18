@@ -228,3 +228,12 @@ Everything below runs from one morning job, `morningCheck()`, scheduled by runni
 ### The Settings tab
 
 The must-haves, budget, radar towns and price cap, down payment, rate, family voters, email recipients and drive-time places are in the **Settings** tab, in plain words. Change a value there and the page and the morning job use it (cached for one minute).
+
+## Tour plan (Nov 19 to 21, 2026)
+
+The **🎟 Our tour plan** section at the top of the page shows Katie's schedule one day at a time: a park-style sketch map with the homes numbered in visiting order, and a timeline with times, breaks and notes (who is away for a nap, which agent is showing).
+
+- The schedule lives in the **Tour plan** tab of the Sheet (`day`, `time`, `stop`, `note`). A stop that starts with a house number and street is matched to that home on our list. Anything else ("Lunch") shows as a break. Run `setupTourPlan()` once to create the tab.
+- The hotel is the **Hotel for our tour** row in Settings (`Name = address`). The script looks up its location once with Apps Script's Maps geocoder and remembers it.
+- The map is an SVG the page draws itself: latitude and longitude are scaled to fit the day's stops, pins that would overlap are nudged apart, and labels are placed where there is room. Homes and the hotel are in their real spots, and the roads are a loose sketch.
+- The section hides itself after the last day of the plan.

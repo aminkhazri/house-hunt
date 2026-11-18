@@ -544,6 +544,47 @@
     .leaflet-popup-content img { width: 180px; height: 110px; object-fit: cover; border-radius: 8px; display: block; margin-bottom: 6px; }
     .leaflet-popup-content button { font: inherit; font-weight: 800; color: var(--sky); background: none; border: 0; padding: 0; text-decoration: underline; cursor: pointer; }
     .install-steps { margin: 0; padding-left: 1.3em; display: grid; gap: 6px; }
+
+    /* ---------- Our tour plan: park-style map and day timeline ---------- */
+    .tour-days { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    .tour-days button { font: inherit; font-size: 1rem; padding: 8px 16px; border-radius: 999px; border: 2px solid var(--c); background: #fff; color: var(--ink); cursor: pointer; }
+    .tour-days button[aria-selected="true"] { background: var(--c); color: #fff; }
+    .tour-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+    @media (max-width: 900px) { .tour-grid { grid-template-columns: 1fr; } }
+    .tour-map svg { width: 100%; height: auto; display: block; filter: drop-shadow(0 6px 14px rgb(18 53 95 / .12)); }
+    .tour-map .paper { fill: #fbf4e2; stroke: #d9c79b; stroke-width: 3; }
+    .tour-map .tree circle { fill: #cfe3c0; } .tour-map .tree rect { fill: #c9b48a; }
+    .tour-map .rd-edge { fill: none; stroke: #dccba0; stroke-width: 9; stroke-linecap: round; stroke-linejoin: round; }
+    .tour-map .rd { fill: none; stroke: #fffdf6; stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; }
+    .tour-map .shield { fill: #fff; stroke: #b9a676; stroke-width: 1; }
+    .tour-map .shield-t { font: 800 7.5px var(--font); fill: #7a6a3f; text-anchor: middle; }
+    .tour-map .town { font: italic 700 11px var(--serif); fill: #8a7a52; text-anchor: middle; letter-spacing: .04em; }
+    .tour-map .other { fill: #b9b3a3; stroke: #fff; stroke-width: 1; }
+    .tour-map .route { fill: none; stroke-width: 3.6; stroke-linecap: round; stroke-dasharray: .1 8; }
+    .tour-map .route.back { stroke-width: 2.4; opacity: .4; }
+    .tour-map .leader { stroke: #6b5d3a; stroke-width: 1; } .tour-map .spot { fill: #6b5d3a; }
+    .tour-map .tpin { cursor: pointer; }
+    .tour-map .tpin path { stroke: #fff; stroke-width: 2.5; stroke-linejoin: round; }
+    .tour-map .tpin text { font: 900 12px var(--font); fill: #fff; text-anchor: middle; }
+    .tour-map text.when { font: 800 8.5px var(--font); fill: var(--ink); text-anchor: middle; paint-order: stroke; stroke: #fbf4e2; stroke-width: 3px; }
+    .tour-map .hotel { fill: #fff; stroke: var(--navy); stroke-width: 2.5; }
+    .tour-map .hotel-i { font-size: 13px; text-anchor: middle; }
+    .tour-map .compass circle { fill: #fff; stroke: #b9a676; } .tour-map .compass path { fill: #a5322a; }
+    .tour-map .compass text { font: 800 7px var(--font); fill: #7a6a3f; text-anchor: middle; }
+    .tl { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+    .tl li { display: grid; grid-template-columns: 5.2em 28px 1fr; gap: 4px 10px; align-items: start; background: var(--paper); border: 1px solid var(--rule); border-radius: 12px; padding: 9px 12px; }
+    .tl li.brk { grid-template-columns: 5.2em 1fr; background: #fdf6e3; border-style: dashed; }
+    .tl time { font-weight: 900; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .tl .tnum { width: 28px; height: 28px; border-radius: 50%; color: #fff; font-weight: 900; display: grid; place-items: center; font-size: .95rem; }
+    .tl .more { font-weight: 800; text-align: left; }
+    .tl .tfacts, .tl .tnote { display: block; font-size: .85rem; color: var(--muted); margin-top: 2px; }
+    .tl .tnote { color: #7a5600; }
+    .tl .tacts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .tl .tacts .tool { font-size: .8rem; padding: 4px 11px; text-decoration: none; }
+    .tl .upnext, .tl .tflag { display: inline-block; margin-left: 6px; font-size: .7rem; font-weight: 900; padding: 1px 8px; border-radius: 999px; vertical-align: 2px; }
+    .tl .upnext { background: #17803d; color: #fff; } .tl .tflag { background: #fde4e1; color: #a5322a; }
+    .tour-route { display: inline-block; margin-top: 12px; text-decoration: none; }
+    @media print { #tour-plan { break-inside: avoid; } }
   </style>
 </head>
 <body>
@@ -562,6 +603,20 @@
   <main class="wrap">
 
     <div class="price-news" id="price-news" hidden></div>
+
+    <section class="panel" id="tour-plan" hidden aria-labelledby="tour-title">
+      <h2 id="tour-title">🎟 Our tour plan</h2>
+      <p class="sub">Katie's plan, day by day. Tap a day, then tap a house on the map or in the list to see it below.</p>
+      <div class="tour-days" id="tour-days" role="tablist" aria-label="Tour days"></div>
+      <div class="tour-grid">
+        <div class="tour-map" id="tour-map"></div>
+        <div>
+          <ol class="tl" id="tour-list"></ol>
+          <a class="tool tour-route" id="tour-route" target="_blank" rel="noopener" hidden></a>
+        </div>
+      </div>
+      <p class="map-legend">A sketch, not a road map: homes and the hotel are in their real spots, roads are drawn loosely. Small grey houses are homes for another day.</p>
+    </section>
 
     <section class="panel" id="radar" hidden aria-labelledby="radar-title">
       <h2 id="radar-title">🆕 New homes that match</h2>
@@ -919,6 +974,7 @@
       $("price-news").innerHTML = priceNewsHtml(list);
       $("price-news").hidden = !$("price-news").innerHTML;
       renderRadar();
+      renderTour();
       if (mapState.map) drawPins();
       $("empty").hidden = list.length > 0;
       const gone = removedList();
@@ -963,6 +1019,7 @@
       votes = data.votes || [];
       tours = data.tours || [];
       radar = data.radar || [];
+      plan = data.plan && Array.isArray(data.plan.stops) ? data.plan : { stops: [], hotel: null };
       market = data.market || {};
       if (data.settings) S = { ...S, ...data.settings };
       $("price-note").textContent = data.pricesChecked ? ` Last price check: ${shortDate(data.pricesChecked)}.` : "";
@@ -1870,6 +1927,165 @@
       $("install").showModal();
     });
     $("install-go").addEventListener("click", async () => { if (installPrompt) { installPrompt.prompt(); await installPrompt.userChoice; installPrompt = null; $("install").close(); } });
+
+    /* =====================================================================
+       Our tour plan: a little park-style map and a timeline for each day.
+       The schedule comes from the "Tour plan" tab in the Sheet.
+       ===================================================================== */
+    let plan = { stops: [], hotel: null };
+    let planDay = null;
+    const DAY_COLORS = ["#c0264b", "#1f6fb2", "#17803d", "#b45309", "#6d3fb3"];
+    const TODAY = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+    /** "205 Nelson Ln" and "205 Nelson Lane" both become "205 nelson", so a plan row finds its home. */
+    const homeKey = (t) => { const m = String(t).toLowerCase().match(/^\s*(\d+)\s+([a-z]+)/); return m ? m[1] + " " + m[2] : ""; };
+    const planDays = () => [...new Set(plan.stops.map((s) => s.day))].filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
+    const niceDay = (d, opt) => new Date(d + "T12:00").toLocaleDateString("en-US", opt || { weekday: "long", month: "short", day: "numeric" });
+    const minutesOf = (t) => { const m = String(t).match(/(\d{1,2})(?::(\d{2}))?\s*([ap])/i); return m ? ((Number(m[1]) % 12) + (/p/i.test(m[3]) ? 12 : 0)) * 60 + Number(m[2] || 0) : null; };
+
+    /** The stops of one day, each with its home (if the row is a home) and its number on the map. */
+    function stopsFor(day) {
+      let n = 0;
+      return plan.stops.filter((s) => s.day === day)
+        .sort((a, b) => (minutesOf(a.time) ?? 0) - (minutesOf(b.time) ?? 0))
+        .map((s) => {
+          const home = homeKey(s.stop) ? homes.find((h) => !h.removed && homeKey(h.address) === homeKey(s.stop)) : null;
+          return { ...s, home, n: home ? ++n : 0 };
+        });
+    }
+
+    // Roads and towns for the sketch. Homes and the hotel sit at their real spots; the roads are drawn loosely.
+    const ROADS = [
+      { name: "I-40", pts: [[35.725, -78.615], [35.66, -78.585], [35.607, -78.563], [35.555, -78.535], [35.47, -78.515]] },
+      { name: "NC 42", pts: [[35.585, -78.80], [35.578, -78.70], [35.592, -78.62], [35.607, -78.563], [35.63, -78.50], [35.648, -78.455], [35.668, -78.40], [35.69, -78.32]] },
+      { name: "US 70", pts: [[35.71, -78.59], [35.68, -78.52], [35.652, -78.462], [35.625, -78.41], [35.59, -78.34]] },
+      { name: "NC 210", pts: [[35.505, -78.80], [35.507, -78.739], [35.515, -78.66], [35.512, -78.59], [35.52, -78.52], [35.53, -78.44]] },
+    ];
+    const TOWNS = [["Clayton", 35.651, -78.457], ["Angier", 35.507, -78.739], ["Willow Spring", 35.563, -78.672], ["Garner", 35.705, -78.615]];
+
+    function tourMapSvg(day, color) {
+      const stops = stopsFor(day).filter((s) => s.home && s.home.lat && s.home.lng);
+      const pts = stops.map((s) => [s.home.lat, s.home.lng]);
+      if (plan.hotel) pts.push([plan.hotel.lat, plan.hotel.lng]);
+      if (!pts.length) return "";
+      const W = 400, H = 300, M = 40;
+      let [la0, la1, lo0, lo1] = [Math.min(...pts.map((p) => p[0])), Math.max(...pts.map((p) => p[0])), Math.min(...pts.map((p) => p[1])), Math.max(...pts.map((p) => p[1]))];
+      const cos = Math.cos(((la0 + la1) / 2) * Math.PI / 180);
+      const k = Math.min((W - 2 * M) / Math.max((lo1 - lo0) * cos, 0.02), (H - 2 * M) / Math.max(la1 - la0, 0.02));
+      const cx = (lo0 + lo1) / 2, cy = (la0 + la1) / 2;
+      const P = (lat, lng) => [W / 2 + (lng - cx) * cos * k, H / 2 - (lat - cy) * k];
+      const f = (n) => n.toFixed(1);
+
+      // Pins start at the true spot, then nudge apart so neighbours don't sit on top of each other.
+      const pins = stops.map((s) => { const [x, y] = P(s.home.lat, s.home.lng); return { s, x, y, tx: x, ty: y }; });
+      const hotel = plan.hotel ? (() => { const [x, y] = P(plan.hotel.lat, plan.hotel.lng); return { x, y, tx: x, ty: y, hotel: true }; })() : null;
+      const all = hotel ? pins.concat([hotel]) : pins;
+      for (let it = 0; it < 40; it++) for (let i = 0; i < all.length; i++) for (let j = i + 1; j < all.length; j++) {
+        const a = all[i], b = all[j]; let dx = b.x - a.x, dy = b.y - a.y; let d = Math.hypot(dx, dy);
+        if (d >= 34) continue;
+        if (d < 0.01) { dx = 1; dy = 0.3; d = 1; }
+        const push = (34 - d) / 2; a.x -= (dx / d) * push; a.y -= (dy / d) * push; b.x += (dx / d) * push; b.y += (dy / d) * push;
+      }
+      all.forEach((p) => { p.x = Math.max(18, Math.min(W - 18, p.x)); p.y = Math.max(22, Math.min(H - 20, p.y)); });
+
+      const road = (r) => { const d = r.pts.map((p, i) => (i ? "L" : "M") + P(p[0], p[1]).map(f).join(" ")).join(" "); return `<path d="${d}" class="rd-edge"/><path d="${d}" class="rd"/>`; };
+      // Labels go where there's room: each one picks the spot farthest from the pins and from labels already placed.
+      const taken = all.map((p) => [p.x, p.y]);
+      const room = (x, y) => Math.min(...taken.map(([a, b]) => Math.hypot((a - x) * 0.7, b - y)));
+      const shield = (r) => {
+        const cand = [];
+        r.pts.forEach((p, i) => { if (!i) return; const [x0, y0] = P(r.pts[i - 1][0], r.pts[i - 1][1]), [x1, y1] = P(p[0], p[1]);
+          for (let t = 0; t <= 1; t += 0.125) cand.push([x0 + (x1 - x0) * t, y0 + (y1 - y0) * t]); });
+        const inside = cand.filter(([x, y]) => x > 30 && x < W - 30 && y > 16 && y < H - 16);
+        if (!inside.length) return "";
+        const [x, y] = inside.sort((a, b) => room(b[0], b[1]) - room(a[0], a[1]))[0];
+        if (room(x, y) < 22) return "";
+        taken.push([x, y]);
+        return `<g transform="translate(${f(x)} ${f(y)})"><rect x="-17" y="-7" width="34" height="14" rx="7" class="shield"/><text class="shield-t" y="3.5">${r.name}</text></g>`;
+      };
+      const shields = ROADS.map(shield).join("");
+      const towns = TOWNS.map(([name, la, lo]) => {
+        const [x, y0] = P(la, lo); const y = y0 - 12;
+        if (!(x > 34 && x < W - 34 && y > 14 && y < H - 8) || room(x, y) < 24) return "";
+        taken.push([x, y]);
+        return `<text class="town" x="${f(x)}" y="${f(y)}">${name}</text>`;
+      }).join("");
+      // Homes we visit on other days, as small grey houses.
+      const todayIds = new Set(stops.map((s) => s.home.id));
+      const others = plan.stops.map((s) => homes.find((h) => !h.removed && homeKey(h.address) === homeKey(s.stop))).filter((h) => h && h.lat && !todayIds.has(h.id))
+        .map((h) => { const [x, y] = P(h.lat, h.lng); return x > 6 && x < W - 6 && y > 6 && y < H - 6 ? `<path class="other" transform="translate(${f(x)} ${f(y)})" d="M-5 1 L0 -5 L5 1 V6 H-5 Z"/>` : ""; }).join("");
+      // A few trees, always in the same places, just for charm.
+      const trees = [[0.08, 0.2], [0.2, 0.86], [0.42, 0.1], [0.63, 0.9], [0.9, 0.16], [0.86, 0.72], [0.3, 0.45], [0.72, 0.4]]
+        .map(([a, b]) => `<g transform="translate(${f(a * W)} ${f(b * H)})" class="tree"><circle r="6"/><circle cx="5" cy="3" r="5"/><rect x="-1" y="5" width="2.4" height="5"/></g>`).join("");
+
+      // The day's path: hotel, then each home in order, with a gentle wobble like a park map.
+      const chain = (hotel ? [hotel] : []).concat(pins);
+      let d = "";
+      chain.forEach((p, i) => {
+        if (!i) { d += `M${f(p.x)} ${f(p.y)}`; return; }
+        const a = chain[i - 1], mx = (a.x + p.x) / 2, my = (a.y + p.y) / 2, len = Math.hypot(p.x - a.x, p.y - a.y) || 1;
+        const off = Math.min(18, len * 0.16) * (i % 2 ? 1 : -1);
+        d += ` Q${f(mx - ((p.y - a.y) / len) * off)} ${f(my + ((p.x - a.x) / len) * off)} ${f(p.x)} ${f(p.y)}`;
+      });
+      const back = hotel && pins.length ? `<path class="route back" stroke="${color}" d="M${f(pins[pins.length - 1].x)} ${f(pins[pins.length - 1].y)} L${f(hotel.x)} ${f(hotel.y)}"/>` : "";
+      const leaders = all.filter((p) => Math.hypot(p.x - p.tx, p.y - p.ty) > 7).map((p) => `<line class="leader" x1="${f(p.tx)}" y1="${f(p.ty)}" x2="${f(p.x)}" y2="${f(p.y)}"/><circle class="spot" cx="${f(p.tx)}" cy="${f(p.ty)}" r="2"/>`).join("");
+      const pinHtml = pins.map((p) => `<g class="tpin" data-jump="${esc(p.s.home.id)}" transform="translate(${f(p.x)} ${f(p.y)})" role="link" tabindex="0" aria-label="Stop ${p.s.n}: ${esc(p.s.home.address)} at ${esc(p.s.time)}">
+          <path d="M-13 1 L0 -13 L13 1 V13 H-13 Z" fill="${color}"/><text y="9">${p.s.n}</text>
+          <text class="when" y="25">${esc(p.s.time.replace(/\s*[AP]M/i, ""))}</text></g>`).join("");
+      const hotelHtml = hotel ? `<g transform="translate(${f(hotel.x)} ${f(hotel.y)})"><circle r="13" class="hotel"/><text class="hotel-i" y="5">🏨</text><text class="when" y="25">Hotel</text></g>` : "";
+
+      return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Sketch map of ${esc(niceDay(day))}: ${pins.length} homes in visiting order">
+        <rect class="paper" x="1.5" y="1.5" width="${W - 3}" height="${H - 3}" rx="16"/>
+        <clipPath id="tm-clip"><rect x="3" y="3" width="${W - 6}" height="${H - 6}" rx="14"/></clipPath>
+        <g clip-path="url(#tm-clip)">${trees}${ROADS.map(road).join("")}</g>${shields}${towns}${others}
+        <path class="route" stroke="${color}" d="${d}"/>${back}${leaders}${hotelHtml}${pinHtml}
+        <g transform="translate(${W - 24} 26)" class="compass"><circle r="12"/><path d="M0 -9 L3.5 2 L0 0 L-3.5 2 Z"/><text y="9.5">N</text></g>
+      </svg>`;
+    }
+
+    function tourRouteLink(stops) {
+      const place = (h) => `${h.address}, ${h.city}, NC ${h.zip}`;
+      const list = stops.filter((s) => s.home).map((s) => place(s.home));
+      if (!list.length) return "";
+      const q = new URLSearchParams({ api: "1", travelmode: "driving", destination: list[list.length - 1] });
+      if (plan.hotel) q.set("origin", plan.hotel.address);
+      if (list.length > 1) q.set("waypoints", list.slice(0, -1).join("|"));
+      return "https://www.google.com/maps/dir/?" + q;
+    }
+
+    function renderTour() {
+      const days = planDays();
+      const today = TODAY();
+      const show = days.length && days[days.length - 1] >= today; // hide once the trip is over
+      $("tour-plan").hidden = !show;
+      if (!show) return;
+      if (!days.includes(planDay)) planDay = days.includes(today) ? today : days.find((d) => d > today) || days[0];
+      const color = DAY_COLORS[days.indexOf(planDay) % DAY_COLORS.length];
+      $("tour-days").innerHTML = days.map((d, i) => `<button type="button" role="tab" aria-selected="${d === planDay}" data-day="${d}" style="--c:${DAY_COLORS[i % DAY_COLORS.length]}">
+        <b>${niceDay(d, { weekday: "short" })}</b> ${niceDay(d, { month: "short", day: "numeric" })}${d === today ? " · today" : ""}</button>`).join("");
+      const stops = stopsFor(planDay);
+      $("tour-map").innerHTML = tourMapSvg(planDay, color);
+      // On the day itself, point at the next stop.
+      const now = new Date().getHours() * 60 + new Date().getMinutes();
+      const next = planDay === today ? stops.find((s) => (minutesOf(s.time) ?? 0) + 20 > now) : null;
+      $("tour-list").innerHTML = stops.map((s) => {
+        const h = s.home;
+        const up = s === next ? `<span class="upnext">Up next</span>` : "";
+        if (!h) return `<li class="brk"><time>${esc(s.time)}</time><div><strong>${esc(s.stop)}</strong>${up}${s.note ? `<span class="tnote">${esc(s.note)}</span>` : ""}</div></li>`;
+        const facts = [h.price ? money(h.price) : "", h.beds ? `${h.beds} bed` : "", h.baths ? `${h.baths} bath` : "", h.sqft ? `${Number(h.sqft).toLocaleString("en-US")} sq ft` : "",
+          h.elementaryScore ? `school ${h.elementaryScore}/10` : "", h.dom ? `${h.dom} days for sale` : ""].filter(Boolean).join(" · ");
+        const flag = h.status && h.status !== "Active" ? `<span class="tflag">${esc(h.status === "Pending" ? "Sale pending" : h.status)}</span>` : "";
+        return `<li><time>${esc(s.time)}</time><span class="tnum" style="background:${color}">${s.n}</span><div>
+          <button type="button" class="more" data-jump="${esc(h.id)}">${esc(h.address)}, ${esc(h.city)}</button>${up}${flag}
+          <span class="tfacts">${facts}</span>${s.note ? `<span class="tnote">${esc(s.note)}</span>` : ""}
+          <span class="tacts"><button type="button" class="tool" data-tour="${esc(h.id)}">📝 Tour notes</button><a class="tool" href="${esc(mapLink(h))}" target="_blank" rel="noopener">Directions</a></span></div></li>`;
+      }).join("");
+      const link = tourRouteLink(stops);
+      $("tour-route").hidden = !link;
+      $("tour-route").href = link || "#";
+      $("tour-route").textContent = `🚗 Open ${niceDay(planDay, { weekday: "long" })}'s route in Google Maps`;
+    }
+    $("tour-days").addEventListener("click", (e) => { const b = e.target.closest("[data-day]"); if (b) { planDay = b.dataset.day; renderTour(); } });
+    $("tour-map").addEventListener("keydown", (e) => { const g = e.target.closest("[data-jump]"); if (g && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); jumpTo(g.dataset.jump); } });
 
     load();
   </script>

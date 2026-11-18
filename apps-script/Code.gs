@@ -180,6 +180,7 @@ function listJson_() {
       answers: parseJson_(t.answers, {}), files: parseJson_(t.files, []),
     })),
     radar: radarForPage_(),
+    plan: planForPage_(),
     market: parseJson_(props.getProperty("MARKET"), {}),
     settings: publicSettings_(),
   });
@@ -881,6 +882,7 @@ const SETTINGS = [
   ["baths", "Must have: bathrooms", 2.5, "At least this many bathrooms."],
   ["sqft", "Must have: square feet", 2250, "At least this many square feet."],
   ["garage", "Must have: garage spaces", 2, "At least this many garage spaces."],
+  ["hotel", "Hotel for our tour", "Hotel area (I-40 / NC-42) = Cleveland Crossing Dr, Garner, NC 27529", "Name = address. Shown on the tour map as the start and end of each day. Change it once the hotel is booked."],
   ["school", "Must have: elementary school rating", 8, "GreatSchools rating out of 10 for the assigned elementary school (8 = 8, 9 and 10 are OK). The radar hides homes below it."],
   ["towns", "New-listing radar: towns", "Cary, Clayton, Wake Forest, Holly Springs, Angier, Garner, Fuquay-Varina", "Towns the morning job searches on Redfin, separated by commas."],
   ["radarMax", "New-listing radar: highest price", 460000, "The radar shows new homes up to this price."],
@@ -1467,4 +1469,77 @@ function setupTriggers() {
   ScriptApp.newTrigger("morningCheck").timeBased().everyDays(1).atHour(6).create();
   settingsSheet_();
   Logger.log("morningCheck will run every day between 6 and 7 am (%s).", Session.getScriptTimeZone());
+}
+
+/* =====================================================================
+   Tour plan: the "Tour plan" tab holds the schedule (one row per stop),
+   and the page draws it as a little map and a timeline for each day.
+   ===================================================================== */
+
+const PLAN_TAB = "Tour plan";
+const PLAN_COLUMNS = ["day", "time", "stop", "note"];
+
+/** An address as { lat, lng }, looked up once with Google Maps and then remembered. */
+function geocode_(address) {
+  const props = PropertiesService.getScriptProperties();
+  const key = "GEO_" + Utilities.base64EncodeWebSafe(address).slice(0, 90);
+  const saved = parseJson_(props.getProperty(key), null);
+  if (saved) return saved;
+  try {
+    const res = Maps.newGeocoder().geocode(address);
+    const at = res.results && res.results[0] && res.results[0].geometry.location;
+    if (!at) return null;
+    const out = { lat: at.lat, lng: at.lng };
+    props.setProperty(key, JSON.stringify(out));
+    return out;
+  } catch (e) { return null; }
+}
+
+/** What the page needs to draw the plan: the stops in the tab, and where the hotel is. */
+function planForPage_() {
+  let hotel = null;
+  const h = places_(settings_().hotel)[0];
+  if (h) {
+    const at = geocode_(h.address);
+    if (at) hotel = { name: h.label, address: h.address, lat: at.lat, lng: at.lng };
+  }
+  return { stops: readTab_(PLAN_TAB, PLAN_COLUMNS), hotel: hotel };
+}
+
+/**
+ * Run once from the editor: makes the "Tour plan" tab and fills it with Katie's plan
+ * (Nov 19 to 21). A stop that starts with a house number and street ("205 Nelson Ln")
+ * is matched to that home on our list; anything else ("Lunch") shows as a break.
+ * Does nothing if the tab already has rows, so edits made in the Sheet are safe.
+ */
+function setupTourPlan() {
+  settingsSheet_(); // adds the Hotel row to Settings if it's missing
+  CacheService.getScriptCache().remove("SETTINGS");
+  const sheet = tab_(PLAN_TAB, PLAN_COLUMNS, "#fdebc8");
+  if (sheet.getLastRow() > 1) { Logger.log("The Tour plan tab already has rows. Nothing changed."); return; }
+  const T = "2026-11-19", F = "2026-11-20", S = "2026-11-21";
+  const rows = [
+    [T, "3:00 PM", "120 Tarnet Trail", "Meet in Angier. Emily joins after 5:00, so a Redfin associate agent may show these."],
+    [T, "3:30 PM", "121 Barnwell Loop", "Waiting to hear from Emily: Redfin showed this one as a rental."],
+    [T, "4:05 PM", "944 Walker Ridge Way", ""],
+    [T, "4:30 PM", "909 Walker Ridge Way", "Same street as the last one. Done by 5:00, then to the hotel."],
+    [F, "9:00 AM", "205 Nelson Ln", "Everyone together this morning."],
+    [F, "9:50 AM", "117 Pearsall Farm Ln", ""],
+    [F, "10:40 AM", "399 Florence Drive", ""],
+    [F, "11:30 AM", "65 Barrowby Dr", "Rachel and Katie are at the hotel for Aurora's nap. Take a video and fill in Tour notes for them."],
+    [F, "12:30 PM", "Lunch and coffee break", "Everyone, until 1:30."],
+    [F, "1:30 PM", "305 Neuse Ridge Dr", "Rachel is back. Katie joins when Aurora wakes up."],
+    [F, "2:15 PM", "393 Badger Pass Dr", ""],
+    [F, "3:00 PM", "53 Westcliff Ct", ""],
+    [F, "3:45 PM", "Catch-up time", "Go back to any home Rachel or Katie missed, until 5:00."],
+    [S, "9:00 AM", "17 Wild Sage Circle", "Emily is away until 2:00, so a Redfin associate agent may show these."],
+    [S, "9:50 AM", "36 Pursuit Ct", ""],
+    [S, "10:30 AM", "50 Regulator Dr", "Right next to the last one."],
+    [S, "11:30 AM", "Aurora's nap, then lunch", "Lunch for everyone 12:30 to 1:30."],
+    [S, "2:00 PM", "Second visits with Emily", "Back to our favorites for a closer look, until 5:00."],
+  ];
+  sheet.getRange(2, 1, rows.length, PLAN_COLUMNS.length).setValues(rows);
+  [110, 90, 240, 520].forEach((w, i) => sheet.setColumnWidth(i + 1, w));
+  clearListCache_();
+  Logger.log("Tour plan tab filled with %s rows.", rows.length);
 }
