@@ -1389,24 +1389,12 @@ function buildDigest_(changes, fresh) {
   const commas = (n) => String(Math.round(Number(n))).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   const money = (n) => "$" + commas(n);
   const tz = Session.getScriptTimeZone();
-  const day = Number(Utilities.formatDate(new Date(), tz, "u")); // 1 = Monday … 7 = Sunday
   const drops = changes.filter((c) => c[2] === "Price" && c[5] < 0);
   const rises = changes.filter((c) => c[2] === "Price" && c[5] > 0);
   const status = changes.filter((c) => c[2] === "Status");
 
-  const soon = [];
-  const tourDays = tourDays_(s.tourDays);
-  readHomes_().filter((h) => h.rank && !h.removed).forEach((h) => {
-    parseJson_(h.openHouses, []).forEach((o) => {
-      const day = Utilities.formatDate(new Date(o.start), tz, "yyyy-MM-dd");
-      const wanted = tourDays.length ? tourDays.indexOf(day) >= 0 : o.start < Date.now() + 4 * 864e5;
-      if (o.start > Date.now() && wanted) soon.push({ h: h, o: o });
-    });
-  });
-  soon.sort((a, b) => a.o.start - b.o.start);
-
   const news = drops.length + rises.length + status.length + fresh.length;
-  if (!news && !(soon.length && (day === 4 || day === 5))) return null;
+  if (!news) return null;
 
   const li = (html) => `<li style="margin:0 0 8px">${html}</li>`;
   const section = (title, color, items) => items.length
@@ -1422,7 +1410,6 @@ function buildDigest_(changes, fresh) {
       `<b>${h.address}, ${h.city}</b>: ${money(h.price)} · ${h.beds} bed · ${h.baths} bath · ${commas(h.sqft)} sq ft` +
       `${h.garage !== "" && h.garage != null ? " · " + h.garage + "-car garage" : ""}` +
       `${Number(h.schoolScore) ? " · Elementary " + h.schoolScore + "/10" : ""} · ${link(h.url, "Redfin")}`))),
-    section(tourDays.length ? "Open houses on our tour days" : "Open houses coming up", "#12355f", soon.map((x) => li(`<b>${when(x.o.start)}</b> – ${Utilities.formatDate(new Date(x.o.end), tz, "h:mm a")}: ${x.h.address}, ${x.h.city}`))),
   ].join("");
 
   const parts = [];
@@ -1430,7 +1417,6 @@ function buildDigest_(changes, fresh) {
   if (fresh.length) parts.push(fresh.length + (fresh.length === 1 ? " new match" : " new matches"));
   if (status.length) parts.push(status.length === 1 ? status[0][1].split(",")[0] + " is " + status[0][4].toLowerCase() : status.length + " status changes");
   if (rises.length) parts.push(rises.length + (rises.length === 1 ? " price increase" : " price increases"));
-  if (!parts.length) parts.push(soon.length + (soon.length === 1 ? " open house" : " open houses") + " this weekend");
 
   const html = `<div style="font-family:Nunito,Segoe UI,Arial,sans-serif;font-size:16px;color:#16243a;max-width:620px">
     <h2 style="font-family:Georgia,serif;color:#12355f;margin:0 0 6px">Good morning! Here's what changed in our home hunt.</h2>

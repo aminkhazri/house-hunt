@@ -501,14 +501,6 @@
     .card .acts .btn { margin: 0; padding: 7px 6px; font-size: .85rem; line-height: 1.2; cursor: pointer; font-family: inherit; display: grid; place-items: center; }
     .more-cards { margin-top: 10px; }
 
-    .oh-day { margin: 0 0 12px; background: var(--paper); border: 1px solid var(--rule); border-radius: 14px; padding: 10px 14px; }
-    .oh-day h3 { margin: 0 0 6px; font-size: 1.05rem; color: var(--navy); display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
-    .oh-day h3 a { font-size: .85rem; font-family: var(--font); }
-    .oh-day ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-    .oh-day li { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; font-size: .95rem; }
-    .oh-day time { font-weight: 900; min-width: 9.5em; }
-    .oh-day .cal { font-size: .85rem; font-weight: 800; }
-    .oh-tag { display: inline-block; margin-top: 4px; font-size: .75rem; font-weight: 800; background: #e8f1fd; color: var(--navy); padding: 2px 8px; border-radius: 8px; }
 
     .nego { display: inline-block; margin-top: 5px; font-size: .75rem; font-weight: 900; background: #fff3c4; color: #7a5600; border: 1px solid #ecd27a; padding: 2px 8px; border-radius: 8px; cursor: help; }
     .nego-why { display: block; font-size: .75rem; color: #7a5600; margin-top: 2px; }
@@ -611,11 +603,6 @@
       <button type="button" class="tool more-cards" id="radar-more" hidden></button>
     </section>
 
-    <section class="panel" id="openhouses" hidden aria-labelledby="oh-title">
-      <h2 id="oh-title">🗓 Open houses coming up</h2>
-      <p class="sub" id="oh-sub">For homes on our list. Tap "Add to calendar" to save one, or "Plan the route" to see that day's stops on a map.</p>
-      <div id="oh-list"></div>
-    </section>
     <section class="overview" aria-labelledby="top5-title">
       <h2 id="top5-title">Top 5 Homes</h2>
       <p class="drag-tip">Press and hold any home, here or in the list below, then drag it up or down to change the order. You can also tap ▲ ▼.</p>
@@ -888,7 +875,7 @@
         <td class="rank grab"><b>${i + 1}</b>${i === 0 ? '<span class="badge">★ Top choice</span>' : ""}
           <span class="arrows"><button type="button" class="arrow" data-step="-1" data-id="${esc(h.id)}" aria-label="Move ${esc(h.address)} up"${i === 0 ? " disabled" : ""}>▲</button><button type="button" class="arrow" data-step="1" data-id="${esc(h.id)}" aria-label="Move ${esc(h.address)} down"${i === total - 1 ? " disabled" : ""}>▼</button></span></td>
         <td class="photo grab">${photo ? `<img src="${esc(photo)}" alt="Front of ${esc(h.address)}" loading="${i < 3 ? "eager" : "lazy"}">` : ""}</td>
-        <td class="home grab" data-label="Home"><strong>${esc(h.address)}</strong><span>${esc(h.city)}, NC</span>${tag ? `<span class="status">${tag}</span>` : ""}${negoHtml(h)}${ohTag(h)}${drivesHtml(h)}</td>
+        <td class="home grab" data-label="Home"><strong>${esc(h.address)}</strong><span>${esc(h.city)}, NC</span>${tag ? `<span class="status">${tag}</span>` : ""}${negoHtml(h)}${drivesHtml(h)}</td>
         <td class="price num${pc ? " changed " + pc.dir : ""}" data-label="Price">${pc ? `<s class="was">${money(h.lastPrice)}</s>` : ""}<strong>${h.price ? money(h.price) : "—"}</strong>${change}${drop}${h.price ? `<button type="button" class="cost" data-cost="${esc(h.id)}">≈ ${money(monthly(h).total)}/mo</button>` : ""}</td>
         <td class="num size" data-label="Size"><i>${h.beds ?? "?"} bed · ${h.baths ?? "?"} bath</i>${h.sqft ? `<i>${Number(h.sqft).toLocaleString("en-US")} sq ft</i>` : ""}${h.yearBuilt ? `<i class="yr">Built ${h.yearBuilt}</i>` : ""}${mustsHtml(h)}</td>
         <td class="safety" data-label="Safety">
@@ -983,7 +970,6 @@
       $("price-news").innerHTML = priceNewsHtml(list);
       $("price-news").hidden = !$("price-news").innerHTML;
       renderRadar();
-      renderOpenHouses(list);
       if (mapState.map) drawPins();
       $("empty").hidden = list.length > 0;
       const gone = removedList();
@@ -1743,12 +1729,11 @@
     function radarCard(r) {
       const photo = safeUrl(r.photoUrl);
       const days = r.dom === null ? "" : r.dom <= 1 ? "Listed today" : `Listed ${r.dom} days ago`;
-      const oh = r.openHouse && r.openHouse > Date.now() ? ` · Open house ${dayName(r.openHouse)}, ${clock(r.openHouse)}` : "";
       return `<li class="card">
         ${photo ? `<img src="${esc(photo)}" alt="Front of ${esc(r.address)}" loading="lazy">` : `<span class="nophoto">🏠</span>`}
         <div><strong>${r.dom !== null && r.dom <= 3 ? '<span class="fresh-tag">NEW</span>' : ""}${esc(r.address)}</strong>
           <span class="meta"><b>${money(r.price)}</b> · ${esc(r.city)}<br>${r.beds} bed · ${r.baths} bath · ${Number(r.sqft || 0).toLocaleString("en-US")} sq ft${r.garage ? ` · ${r.garage}-car garage` : ""}</span></div>
-        <span class="meta">${r.schoolScore ? `Elementary school ${r.schoolScore}/10 · ` : ""}${days}${oh}</span>
+        <span class="meta">${r.schoolScore ? `Elementary school ${r.schoolScore}/10 · ` : ""}${days}</span>
         <div class="acts">
           <button type="button" class="btn" data-radar-add="${esc(r.url)}">＋ Add</button>
           <a class="btn light" href="${esc(safeUrl(r.url))}" target="_blank" rel="noopener">Redfin</a>
@@ -1795,57 +1780,6 @@
         radar.unshift(r); renderRadar();
         showToast("Sorry, that didn't save. Please try again.");
       }
-    }
-
-    /* ---------- Open houses for homes on our list ---------- */
-    /** Our tour days from Settings (only ones still ahead), as "YYYY-MM-DD" in local time. */
-    const dayKey = (ms) => { const d = new Date(ms); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
-    const tourDays = () => (S.tourDays || []).filter((d) => d >= dayKey(Date.now()));
-    /** Open houses to show: only on our tour days if we have any coming up, otherwise the next 10 days. */
-    function upcoming(h) {
-      const days = tourDays();
-      return parse(h.openHouses, []).filter((o) => o.end > Date.now() &&
-        (days.length ? days.includes(dayKey(o.start)) : o.start < Date.now() + 10 * 864e5));
-    }
-    function ohTag(h) {
-      const next = upcoming(h)[0];
-      return next ? `<span class="oh-tag">🗓 Open house ${new Date(next.start).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}, ${clock(next.start)}</span>` : "";
-    }
-    /** A "Add to Google Calendar" link with the address, times and the Redfin link filled in. */
-    function calLink(h, o) {
-      const z = (ms) => new Date(ms).toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
-      const q = new URLSearchParams({ action: "TEMPLATE", text: `Open house: ${h.address}`, dates: `${z(o.start)}/${z(o.end)}`,
-        location: `${h.address}, ${h.city}, NC ${h.zip}`, details: `From our home hunt page. Redfin: ${h.redfinUrl}` });
-      return "https://calendar.google.com/calendar/render?" + q;
-    }
-    /** Google Maps directions through that day's open houses, in time order. */
-    function routeLink(stops) {
-      const place = (h) => `${h.address}, ${h.city}, NC ${h.zip}`;
-      const q = new URLSearchParams({ api: "1", travelmode: "driving", destination: place(stops[stops.length - 1].h) });
-      if (stops.length > 1) q.set("waypoints", stops.slice(0, -1).map((x) => place(x.h)).join("|"));
-      return "https://www.google.com/maps/dir/?" + q;
-    }
-    function renderOpenHouses(list) {
-      const all = [];
-      list.forEach((h, i) => upcoming(h).forEach((o) => all.push({ h, o, rank: i + 1 })));
-      all.sort((a, b) => a.o.start - b.o.start);
-      const days = {};
-      all.forEach((x) => { const k = new Date(x.o.start).toDateString(); (days[k] = days[k] || []).push(x); });
-      const wanted = tourDays();
-      const nice = (d) => new Date(d + "T12:00").toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
-      $("oh-title").textContent = wanted.length ? "🗓 Open houses on our tour days" : "🗓 Open houses coming up";
-      $("oh-sub").textContent = (wanted.length ? `Only showing ${wanted.map(nice).join(" and ")}. ` : "For homes on our list. ")
-        + `Tap "Add to calendar" to save one, or "Plan the route" to see that day's stops on a map.`;
-      $("openhouses").hidden = all.length === 0 && !wanted.length;
-      if (!all.length) { $("oh-list").innerHTML = `<p class="sub">None of our homes have an open house on those days yet. Redfin is checked every morning, so new ones will show up here.</p>`; return; }
-      $("oh-list").innerHTML = Object.keys(days).map((k) => {
-        const stops = days[k];
-        return `<div class="oh-day"><h3>${dayName(stops[0].o.start)}${stops.length > 1 ? `<a href="${esc(routeLink(stops))}" target="_blank" rel="noopener">🚗 Plan the route (${stops.length} stops)</a>` : ""}</h3><ul>
-          ${stops.map((x) => `<li><time>${clock(x.o.start)} – ${clock(x.o.end)}</time>
-            <button type="button" class="more" data-jump="${esc(x.h.id)}">#${x.rank} ${esc(x.h.address)}, ${esc(x.h.city)}</button>
-            <a class="cal" href="${esc(calLink(x.h, x.o))}" target="_blank" rel="noopener">＋ Add to calendar</a></li>`).join("")}
-        </ul></div>`;
-      }).join("");
     }
 
     /* ---------- Tour notes: checklist, notes, photos and voice notes ---------- */
