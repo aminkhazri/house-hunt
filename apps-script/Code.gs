@@ -1206,63 +1206,81 @@ function radarCheck_() {
   });
   PropertiesService.getScriptProperties().setProperty("MARKET", JSON.stringify(market));
 
-  // 3) Compare with what we've seen before and with our own list.
+  // 3) Compare with what we've seen before and with our own list (no lock yet: only reading).
+  //    A brand-new match starts as "checking": it stays off the page until its listing has been
+  //    looked at and it passes the garage and school checks. Then it becomes "new".
+  const old = readTab_(RADAR_TAB, RADAR_COLUMNS);
+  const baseline = old.length === 0;
+  const byNum = {};
+  old.forEach((r) => { byNum[homeNum_(r.url)] = r; });
+  const ours = {};
+  const key = (address, zip) => String(address).toLowerCase().replace(/\W/g, "").slice(0, 8) + zip;
+  readHomes_().forEach((h) => { ours[homeNum_(h.redfinUrl)] = true; ours[key(h.address, h.zip)] = true; });
+  const now = new Date().toISOString();
+  const seenToday = {};
+  const created = {};
+  const passes = (r) => Number(r.schoolScore) >= s.school && !(Number(r.garage) && Number(r.garage) < s.garage);
+
+  found.forEach((h) => {
+    const num = homeNum_(h.url);
+    if (!num || seenToday[num]) return;
+    seenToday[num] = true;
+    const prev = byNum[num];
+    if (prev) { // already known: keep the numbers current
+      Object.assign(prev, { price: h.price, dom: h.dom, ppsf: h.ppsf, openHouse: h.openHouse });
+      if (prev.status === "gone") prev.status = "seen";
+      const recent = Date.now() - new Date(prev.foundAt).getTime() < RADAR_DAYS * 864e5;
+      // Shown before its school was checked (or the school couldn't be read): check it again.
+      if (prev.status === "new" && !(Number(prev.schoolScore) > 0)) prev.status = "checking";
+      // The school minimum in Settings changed: show recent matches that pass now, hide ones that don't.
+      else if (/^school below/.test(prev.status) && passes(prev) && recent) prev.status = "new";
+      else if (prev.status === "new" && !passes(prev)) prev.status = "school below " + s.school;
+      return;
+    }
+    if (ours[num] || ours[key(h.address, h.zip)]) return;
+    const row = Object.assign({}, h, { garage: "", photoUrl: "", school: "", schoolScore: "", foundAt: now,
+      status: baseline && !(h.dom !== null && h.dom <= 3) ? "seen" : "checking" });
+    byNum[num] = row;
+    created[num] = true;
+  });
+  // Matches that disappeared from Redfin's results (sold, pending, price went up…)
+  Object.keys(byNum).forEach((num) => {
+    if ((byNum[num].status === "new" || byNum[num].status === "checking") && !seenToday[num]) byNum[num].status = "gone";
+  });
+
+  // 4) Look at each match waiting for a check: photo, garage and elementary school.
+  //    Up to 40 a morning, newest listings first; any left over wait for tomorrow (still hidden).
+  const waiting = Object.keys(byNum).map((k) => byNum[k]).filter((r) => r.status === "checking")
+    .sort((a, b) => (Number(a.dom) || 0) - (Number(b.dom) || 0));
+  const fresh = [];
+  waiting.slice(0, 40).forEach((row) => {
+    try {
+      const info = redfinLookup_(row.url);
+      row.photoUrl = info.photoUrl || row.photoUrl || "";
+      row.garage = info.garage == null ? "" : info.garage;
+      row.school = info.elementary || "";
+      row.schoolScore = info.elementaryScore == null ? "" : info.elementaryScore;
+      if (info.garage !== null && info.garage < s.garage) row.status = "small garage";
+      else if (info.elementaryScore == null) row.status = "school unknown";
+      else if (info.elementaryScore < s.school) row.status = "school below " + s.school;
+      else {
+        row.status = "new";
+        if (created[homeNum_(row.url)]) fresh.push(row); // only brand-new ones go in the email
+      }
+    } catch (e) { /* stays "checking" and is tried again tomorrow */ }
+    Utilities.sleep(300);
+  });
+
+  // 5) Write it all back, under the lock. Keep any "Not for us" / "Add" taps made on the page
+  //    while we were checking listings.
   const lock = LockService.getScriptLock();
   lock.waitLock(20000);
-  const fresh = [];
   try {
     const sheet = tab_(RADAR_TAB, RADAR_COLUMNS, "#e9f8ee");
-    const old = readTab_(RADAR_TAB, RADAR_COLUMNS);
-    const baseline = old.length === 0;
-    const byNum = {};
-    old.forEach((r) => { byNum[homeNum_(r.url)] = r; });
-    const ours = {};
-    readHomes_().forEach((h) => { ours[homeNum_(h.redfinUrl)] = true; ours[(h.address.toLowerCase().replace(/\W/g, "").slice(0, 8)) + h.zip] = true; });
-    const now = new Date().toISOString();
-    const seenToday = {};
-
-    found.forEach((h) => {
-      const num = homeNum_(h.url);
-      if (!num || seenToday[num]) return;
-      seenToday[num] = true;
-      const prev = byNum[num];
-      if (prev) { // already known: keep the numbers current
-        Object.assign(prev, { price: h.price, dom: h.dom, ppsf: h.ppsf, openHouse: h.openHouse });
-        if (prev.status === "gone") prev.status = "seen";
-        // The school minimum in Settings changed: bring back recent matches that pass it now, hide ones that don't.
-        const recent = Date.now() - new Date(prev.foundAt).getTime() < RADAR_DAYS * 864e5;
-        const score = Number(prev.schoolScore);
-        if (/^school below/.test(prev.status) && score >= s.school && recent) prev.status = "new";
-        else if (prev.status === "new" && score && score < s.school) prev.status = "school below " + s.school;
-        return;
-      }
-      if (ours[num] || ours[h.address.toLowerCase().replace(/\W/g, "").slice(0, 8) + h.zip]) return;
-      const row = Object.assign({}, h, { garage: "", photoUrl: "", foundAt: now,
-        status: baseline && !(h.dom !== null && h.dom <= 3) ? "seen" : "new" });
-      byNum[num] = row;
-      if (row.status === "new") fresh.push(row);
+    readTab_(RADAR_TAB, RADAR_COLUMNS).forEach((r) => {
+      const mine = byNum[homeNum_(r.url)];
+      if (mine && (r.status === "skipped" || r.status === "added")) mine.status = r.status;
     });
-    // New matches that disappeared from Redfin's results (sold, pending, price went up…)
-    Object.keys(byNum).forEach((num) => { if (byNum[num].status === "new" && !seenToday[num]) byNum[num].status = "gone"; });
-
-    // 4) Look at each new match's listing for the photo, the garage and the elementary school
-    //    (at most 15 a day). Matches already in the box that were found before the school
-    //    check existed get looked at too.
-    const toCheck = fresh.concat(Object.keys(byNum).map((k) => byNum[k])
-      .filter((r) => r.status === "new" && (r.schoolScore === "" || r.schoolScore === undefined)));
-    toCheck.filter((r, i, a) => a.indexOf(r) === i).slice(0, 15).forEach((row) => {
-      try {
-        const info = redfinLookup_(row.url);
-        row.photoUrl = info.photoUrl || row.photoUrl || "";
-        row.garage = info.garage == null ? "" : info.garage;
-        row.school = info.elementary || "";
-        row.schoolScore = info.elementaryScore == null ? "unknown" : info.elementaryScore;
-        if (info.garage !== null && info.garage < s.garage) row.status = "small garage";
-        else if (info.elementaryScore !== null && info.elementaryScore < s.school) row.status = "school below " + s.school;
-      } catch (e) { /* keep it as it is */ }
-      Utilities.sleep(400);
-    });
-
     const all = Object.keys(byNum).map((k) => byNum[k]);
     sheet.getRange(1, 1, 1, RADAR_COLUMNS.length).setValues([RADAR_COLUMNS]); // header, in case new columns were added
     sheet.getRange(2, 1, Math.max(sheet.getLastRow() - 1, 1), RADAR_COLUMNS.length).clearContent();
@@ -1273,7 +1291,8 @@ function radarCheck_() {
     lock.releaseLock();
   }
   const kept = fresh.filter((r) => r.status === "new");
-  Logger.log("Radar: %s towns, %s matching homes, %s new.", townsRead, found.length, kept.length);
+  Logger.log("Radar: %s towns, %s matching homes, %s checked, %s still waiting, %s new.", townsRead, found.length,
+    Math.min(waiting.length, 40), Math.max(waiting.length - 40, 0), kept.length);
   return kept;
 }
 
@@ -1281,7 +1300,7 @@ function radarCheck_() {
 function radarForPage_() {
   const cutoff = Date.now() - RADAR_DAYS * 864e5;
   return readTab_(RADAR_TAB, RADAR_COLUMNS)
-    .filter((r) => r.status === "new" && new Date(r.foundAt).getTime() > cutoff)
+    .filter((r) => r.status === "new" && new Date(r.foundAt).getTime() > cutoff && Number(r.schoolScore) > 0)
     .sort((a, b) => new Date(b.foundAt) - new Date(a.foundAt) || Number(a.dom) - Number(b.dom))
     .slice(0, 20)
     .map((r) => {
