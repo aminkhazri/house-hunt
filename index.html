@@ -575,6 +575,9 @@
     .hidden-list strong { color: var(--navy); } .hidden-list span { font-size: .85rem; color: var(--muted); }
     .hidden-list .by { color: #7a5600; font-weight: 700; }
     .hidden-list .tool { text-decoration: none; }
+    .tl .ttime { font: inherit; font-weight: 900; font-variant-numeric: tabular-nums; white-space: nowrap; background: none; border: 0; border-bottom: 2px dashed var(--rule); padding: 0 0 1px; color: var(--ink); cursor: pointer; text-align: left; align-self: start; }
+    .tl .ttime:hover, .tl .ttime:focus-visible { border-bottom-color: var(--navy); color: var(--navy); }
+    .tl .ttime.tbd { color: var(--muted); font-weight: 800; font-size: .9rem; }
   </style>
 </head>
 <body>
@@ -730,6 +733,20 @@
       <p>So the family knows who did what. We'll remember it on this phone or computer.</p>
       <div class="pick" id="who-pick"></div>
       <div class="dialog-buttons"><button class="btn light" value="cancel">Cancel</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="settime" aria-labelledby="settime-title">
+    <form id="settime-form">
+      <h2 id="settime-title">Set the time</h2>
+      <p id="settime-stop"></p>
+      <input id="settime-input" type="time" step="300" style="font-size:1.4rem;padding:10px;width:100%">
+      <p class="error" id="settime-error" role="alert"></p>
+      <div class="dialog-buttons">
+        <button type="submit" class="btn" id="settime-go">Save time</button>
+        <button type="button" class="btn light" id="settime-tbd">Not set yet (TBD)</button>
+        <button type="button" class="btn light" id="settime-cancel">Cancel</button>
+      </div>
     </form>
   </dialog>
 
@@ -1991,7 +2008,7 @@
     function stopsFor(day) {
       let n = 0;
       return plan.stops.filter((s) => s.day === day)
-        .sort((a, b) => (minutesOf(a.time) ?? 0) - (minutesOf(b.time) ?? 0))
+        .map((s, i) => ({ s, i })).sort((a, b) => (minutesOf(a.s.time) ?? 9999) - (minutesOf(b.s.time) ?? 9999) || a.i - b.i).map((x) => x.s)
         .map((s) => {
           const home = homeKey(s.stop) ? homes.find((h) => !h.removed && homeKey(h.address) === homeKey(s.stop)) : null;
           return { ...s, home, n: home ? ++n : 0 };
@@ -2063,15 +2080,15 @@
       drawTourMap(planDay, color);
       // On the day itself, point at the next stop.
       const now = new Date().getHours() * 60 + new Date().getMinutes();
-      const next = planDay === today ? stops.find((s) => (minutesOf(s.time) ?? 0) + 20 > now) : null;
+      const next = planDay === today ? stops.find((s) => minutesOf(s.time) !== null && minutesOf(s.time) + 20 > now) : null;
       $("tour-list").innerHTML = stops.map((s) => {
         const h = s.home;
         const up = s === next ? `<span class="upnext">Up next</span>` : "";
-        if (!h) return `<li class="brk"><time>${esc(s.time)}</time><div><strong>${esc(s.stop)}</strong>${up}${s.note ? `<span class="tnote">${esc(s.note)}</span>` : ""}</div></li>`;
+        if (!h) return `<li class="brk"><button type="button" class="ttime${s.time ? "" : " tbd"}" data-settime="${esc(s.day)}|${esc(s.stop)}" aria-label="Change the time for ${esc(s.stop)}">${esc(s.time || "Time TBD")}</button><div><strong>${esc(s.stop)}</strong>${up}${s.note ? `<span class="tnote">${esc(s.note)}</span>` : ""}</div></li>`;
         const facts = [h.price ? money(h.price) : "", h.beds ? `${h.beds} bed` : "", h.baths ? `${h.baths} bath` : "", h.sqft ? `${Number(h.sqft).toLocaleString("en-US")} sq ft` : "",
           h.elementaryScore ? `school ${h.elementaryScore}/10` : "", h.dom ? `${h.dom} days for sale` : ""].filter(Boolean).join(" · ");
         const flag = h.status && h.status !== "Active" ? `<span class="tflag">${esc(h.status === "Pending" ? "Sale pending" : h.status)}</span>` : "";
-        return `<li><time>${esc(s.time)}</time><span class="tnum" style="background:${color}">${s.n}</span><div>
+        return `<li><button type="button" class="ttime${s.time ? "" : " tbd"}" data-settime="${esc(s.day)}|${esc(s.stop)}" aria-label="Change the time for ${esc(s.stop)}">${esc(s.time || "Time TBD")}</button><span class="tnum" style="background:${color}">${s.n}</span><div>
           <button type="button" class="more" data-jump="${esc(h.id)}">${esc(h.address)}, ${esc(h.city)}</button>${up}${flag}
           <span class="tfacts">${facts}</span>${s.note ? `<span class="tnote">${esc(s.note)}</span>` : ""}
           <span class="tacts"><button type="button" class="tool" data-tour="${esc(h.id)}">📝 Tour notes</button><a class="tool" href="${esc(mapLink(h))}" target="_blank" rel="noopener">Directions</a></span></div></li>`;
@@ -2081,6 +2098,39 @@
       $("tour-route").href = link || "#";
       $("tour-route").textContent = `🚗 Open ${niceDay(planDay, { weekday: "long" })}'s route in Google Maps`;
     }
+
+    /* ---------- Set a stop's time from the page (saved in the Tour plan tab) ---------- */
+    let timeFor = null;
+    const to24 = (t) => { const m = minutesOf(t); return m === null ? "" : String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0"); };
+    const to12 = (v) => { const [h, mi] = v.split(":").map(Number); return `${((h + 11) % 12) + 1}:${String(mi).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`; };
+    $("tour-list").addEventListener("click", async (e) => {
+      const b = e.target.closest("[data-settime]");
+      if (!b) return;
+      if (!(await whoAmI())) return;
+      const [day, ...rest] = b.dataset.settime.split("|");
+      timeFor = plan.stops.find((s) => s.day === day && s.stop === rest.join("|"));
+      if (!timeFor) return;
+      $("settime-stop").textContent = `${timeFor.stop} · ${niceDay(day)}`;
+      $("settime-input").value = to24(timeFor.time);
+      $("settime-error").textContent = "";
+      $("settime").showModal();
+    });
+    async function saveTime(time) {
+      const go = $("settime-go");
+      go.disabled = true;
+      try {
+        await send("planTime", null, { day: timeFor.day, stop: timeFor.stop, time });
+        timeFor.time = time;
+        $("settime").close();
+        renderTour();
+        showToast(time ? `Time set to ${time}.` : "Time cleared.");
+      } catch (err) {
+        $("settime-error").textContent = err.message && !/^Unknown/.test(err.message) ? err.message : "Sorry, that didn't save. Please try again.";
+      } finally { go.disabled = false; }
+    }
+    $("settime-form").addEventListener("submit", (e) => { e.preventDefault(); const v = $("settime-input").value; if (!v) { $("settime-error").textContent = "Pick a time, or tap Not set yet."; return; } saveTime(to12(v)); });
+    $("settime-tbd").addEventListener("click", () => saveTime(""));
+    $("settime-cancel").addEventListener("click", () => $("settime").close());
     $("tour-days").addEventListener("click", (e) => { const b = e.target.closest("[data-day]"); if (b) { planDay = b.dataset.day; renderTour(); } });
 
     load();

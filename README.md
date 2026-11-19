@@ -236,6 +236,7 @@ The **🎟 Our tour plan** section at the top of the page shows Katie's schedule
 - The schedule lives in the **Tour plan** tab of the Sheet (`day`, `time`, `stop`, `note`). A stop that starts with a house number and street is matched to that home on our list. Anything else ("Lunch") shows as a break. Run `setupTourPlan()` once to create the tab.
 - The hotel is the **Hotel for our tour** row in Settings (`Name = address`). The script looks up its location once with Apps Script's Maps geocoder and remembers it.
 - The map is satellite imagery (Leaflet with Esri World Imagery tiles, plus road and place-name layers). Numbered pins show the visiting order, joined by a dashed line from the hotel. The line is straight between stops; the "Open the route in Google Maps" button gives real driving directions.
+- Tap any time in the timeline to set it (or mark it **Time TBD**). It's saved straight to the Tour plan tab (`planTime` action), logged in Activity, and the day re-sorts by time with TBD stops at the end.
 - The section hides itself after the last day of the plan.
 
 ## Who did what

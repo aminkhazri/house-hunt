@@ -154,6 +154,7 @@ function handlePost_(body) {
       case "tour": return { ok: true, tour: saveTour_(body.tour) };
       case "radar": return { ok: true, radar: decideRadar_(body.url, body.decision, body.by) };
       case "settings": return { ok: true, settings: saveCostSettings_(body) };
+      case "planTime": return { ok: true, stop: setPlanTime_(body) };
       default: return { ok: false, error: "Unknown action." };
     }
 }
@@ -1387,6 +1388,7 @@ function logActivity_(body, out) {
     case "radar":
       what = { skip: "Hid a new match (Not for us)", "new": "Brought back a new match" }[body.decision] || "Changed a new match";
       home = radarName(body.url); break;
+    case "planTime": what = body.time ? "Set a tour time to " + body.time : "Cleared a tour time (TBD)"; home = body.stop + " (" + body.day + ")"; break;
     case "settings": what = "Changed the monthly-cost numbers"; detail = body.downPct + "% down, rate " + (body.rate || "from Redfin"); break;
     default: return;
   }
@@ -1610,4 +1612,25 @@ function setupTourPlan() {
   [110, 90, 240, 520].forEach((w, i) => sheet.setColumnWidth(i + 1, w));
   clearListCache_();
   Logger.log("Tour plan tab filled with %s rows.", rows.length);
+}
+
+/**
+ * Set (or clear) the time of one stop in the Tour plan tab, from the page.
+ * The stop is found by its day and its stop text. time: "9:30 AM", or "" for "Time TBD".
+ */
+function setPlanTime_(body) {
+  const day = String(body.day || ""), stop = String(body.stop || "").trim();
+  let time = String(body.time || "").trim().toUpperCase();
+  if (time) {
+    const m = time.match(/^(\d{1,2}):(\d{2})\s*([AP])M?$/);
+    if (!m || Number(m[1]) < 1 || Number(m[1]) > 12 || Number(m[2]) > 59) throw new Error("Please pick a time like 9:30 AM.");
+    time = Number(m[1]) + ":" + m[2] + " " + m[3] + "M";
+  }
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(PLAN_TAB);
+  if (!sheet || sheet.getLastRow() < 2) throw new Error("There's no tour plan right now.");
+  const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, PLAN_COLUMNS.length).getDisplayValues();
+  const i = rows.findIndex((r) => r[0] === day && r[2].trim() === stop);
+  if (i < 0) throw new Error("Couldn't find that stop. Refresh the page and try again.");
+  sheet.getRange(i + 2, 2).setNumberFormat("@").setValue(time);
+  return { day: day, time: time, stop: stop, note: rows[i][3] };
 }
