@@ -1776,10 +1776,10 @@
       ["kitchen", "Kitchen works for our family?"],
       ["feel", "The neighborhood feels safe and well kept?"],
     ];
-    /** We used to ask "Bedroom on the main floor?" where Yes counted as good. We don't want that, so older answers are flipped into the new question. */
+    /** The old question was "Bedroom and full bath on the main floor?" (any bedroom, not the primary), so its answers can't be read as
+        primary-upstairs answers. They're hidden; everyone answers the new question going forward. */
     function fixOldAnswers(t) {
       const a = { ...(t.answers || {}) };
-      if (a.mainfloor && !a.primaryup) a.primaryup = { yes: "no", no: "yes" }[a.mainfloor] || a.mainfloor;
       delete a.mainfloor;
       return { ...t, answers: a };
     }
