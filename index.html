@@ -1048,7 +1048,7 @@
       comments = data.comments || [];
       safetyByZip = data.safety || {};
       votes = data.votes || [];
-      tours = data.tours || [];
+      tours = (data.tours || []).map(fixOldAnswers);
       radar = data.radar || [];
       radarHidden = data.radarHidden || [];
       plan = data.plan && Array.isArray(data.plan.stops) ? data.plan : { stops: [], hotel: null };
@@ -1763,7 +1763,7 @@
 
     /* ---------- Tour notes: checklist, notes, photos and voice notes ---------- */
     const QUESTIONS = [
-      ["mainfloor", "Bedroom and full bath on the main floor?"],
+      ["primaryup", "Primary bedroom upstairs (not on the main floor)?"],
       ["roof", "Roof looks newer and in good shape?"],
       ["hvac", "Heating and AC are newer (ask their age)?"],
       ["waterheater", "Water heater is newer (ask its age)?"],
@@ -1776,8 +1776,15 @@
       ["kitchen", "Kitchen works for our family?"],
       ["feel", "The neighborhood feels safe and well kept?"],
     ];
+    /** We used to ask "Bedroom on the main floor?" where Yes counted as good. We don't want that, so older answers are flipped into the new question. */
+    function fixOldAnswers(t) {
+      const a = { ...(t.answers || {}) };
+      if (a.mainfloor && !a.primaryup) a.primaryup = { yes: "no", no: "yes" }[a.mainfloor] || a.mainfloor;
+      delete a.mainfloor;
+      return { ...t, answers: a };
+    }
     const LABEL = { yes: "👍 Yes", no: "👎 No", unsure: "🤷 Not sure" };
-    const SHORT = { mainfloor: "Main-floor bedroom", roof: "Roof", hvac: "Heat & AC", waterheater: "Water heater", smell: "Smells", sound: "Walls & floors",
+    const SHORT = { primaryup: "Primary bedroom upstairs", roof: "Roof", hvac: "Heat & AC", waterheater: "Water heater", smell: "Smells", sound: "Walls & floors",
       pressure: "Water pressure", light: "Natural light", quiet: "Quiet street", yard: "Yard", kitchen: "Kitchen", feel: "Neighborhood" };
 
     /** Everyone's tour notes for one home, shown right under it: who, when, their notes, what they flagged, photos and voice notes. */
@@ -1920,7 +1927,7 @@
       try {
         store.set("homehunt.name", name);
         const data = await send("tour", null, { tour: { ...tourDraft, name, notes: $("tour-notes").value.trim() } });
-        tours = tours.filter((t) => t.id !== data.tour.id).concat([data.tour]);
+        tours = tours.filter((t) => t.id !== data.tour.id).concat([fixOldAnswers(data.tour)]);
         $("tour").close();
         render();
         showToast("Your tour notes were saved. Thank you!");
