@@ -578,6 +578,21 @@
     .tl .ttime { font: inherit; font-weight: 900; font-variant-numeric: tabular-nums; white-space: nowrap; background: none; border: 0; border-bottom: 2px dashed var(--rule); padding: 0 0 1px; color: var(--ink); cursor: pointer; text-align: left; align-self: start; }
     .tl .ttime:hover, .tl .ttime:focus-visible { border-bottom-color: var(--navy); color: var(--navy); }
     .tl .ttime.tbd { color: var(--muted); font-weight: 800; font-size: .9rem; }
+    .tnotes { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; margin: 6px 0 8px 60px; }
+    .tnote-card { background: #f3faf5; border: 1px solid #b9dfc6; border-radius: 12px; padding: 8px 12px; font-size: .9rem; }
+    .tn-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
+    .tn-head strong { color: #1d6b3a; }
+    .tn-head span { color: var(--muted); font-size: .8rem; }
+    .tn-all { margin-left: auto; font: inherit; font-size: .78rem; font-weight: 800; color: #1d6b3a; background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; }
+    .tn-text { margin: 4px 0 0; white-space: pre-wrap; line-height: 1.4; }
+    .tn-flags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+    .tn-flags .flag { font-size: .75rem; font-weight: 800; padding: 1px 7px; border-radius: 6px; }
+    .tn-flags .flag.no { background: #fde4e1; color: #a5322a; }
+    .tn-flags .flag.unsure { background: #fff3c4; color: #7a5600; }
+    .tn-photos { display: flex; gap: 6px; margin-top: 6px; overflow-x: auto; }
+    .tn-photos img { width: 72px; height: 72px; object-fit: cover; border-radius: 8px; display: block; }
+    .tnote-card audio { width: 100%; margin-top: 6px; height: 34px; }
+    @media (max-width: 1180px) { .tnotes { margin-left: 0; grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
@@ -931,7 +946,7 @@
           <button type="button" class="btn remove" data-remove="${esc(h.id)}">Remove</button>
         </td>
       </tr>
-      <tr class="c-row${i % 2 ? " alt" : ""}" data-for="${esc(h.id)}"><td colspan="8"><div class="family">${familyHtml(h)}</div><div class="comments">${commentsHtml(h)}</div></td></tr>`;
+      <tr class="c-row${i % 2 ? " alt" : ""}" data-for="${esc(h.id)}"><td colspan="8"><div class="family">${familyHtml(h)}</div>${tourNotesHtml(h)}<div class="comments">${commentsHtml(h)}</div></td></tr>`;
     }
 
     const shortDate = (iso) => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleDateString("en-US", { month: "short", day: "numeric" }); };
@@ -1600,16 +1615,11 @@
       const v = voteSummary(h);
       const my = (me() || "").toLowerCase();
       const list = v.list.map((x) => `<span class="v${x.name.toLowerCase() === my ? " me" : ""}">${esc(x.name)} <span class="hearts" aria-label="${x.hearts} of 5 hearts">${heartStr(x.hearts)}</span></span>`).join("");
-      const tourChips = tours.filter((t) => t.homeId === h.id).map((t) => {
-        const a = Object.values(t.answers || {});
-        const photos = (t.files || []).filter((f) => f.type === "photo").length, audio = (t.files || []).some((f) => f.type === "audio");
-        return `<button type="button" class="tour-chip" data-tourview="${esc(t.id)}">📝 ${esc(t.name)}'s tour · ${shortDate(t.at)}${a.length ? ` · 👍 ${a.filter((x) => x === "yes").length} 👎 ${a.filter((x) => x === "no").length}` : ""}${photos ? ` · 📷 ${photos}` : ""}${audio ? " · 🎤" : ""}</button>`;
-      }).join("");
       return (v.count ? `<span class="score"><span class="hearts">♥</span> ${v.avg} family score</span>` : "")
         + list
         + (v.waiting.length && v.count ? `<span class="wait">Waiting on ${esc(v.waiting.join(", "))}</span>` : "")
         + `<button type="button" class="vote-btn" data-vote="${esc(h.id)}">♥ ${v.list.some((x) => x.name.toLowerCase() === my) ? "Change my vote" : "Vote"}</button>`
-        + tourChips;
+        ;
     }
 
     let voteFor = null, voteName = "", voteHearts = 0;
@@ -1767,6 +1777,32 @@
       ["feel", "The neighborhood feels safe and well kept?"],
     ];
     const LABEL = { yes: "👍 Yes", no: "👎 No", unsure: "🤷 Not sure" };
+    const SHORT = { mainfloor: "Main-floor bedroom", roof: "Roof", hvac: "Heat & AC", waterheater: "Water heater", smell: "Smells", sound: "Walls & floors",
+      pressure: "Water pressure", light: "Natural light", quiet: "Quiet street", yard: "Yard", kitchen: "Kitchen", feel: "Neighborhood" };
+
+    /** Everyone's tour notes for one home, shown right under it: who, when, their notes, what they flagged, photos and voice notes. */
+    function tourNotesHtml(h) {
+      const list = tours.filter((t) => t.homeId === h.id).sort((a, b) => String(a.at).localeCompare(String(b.at)));
+      if (!list.length) return "";
+      const when = (iso) => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) + ", " + d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }); };
+      return `<div class="tnotes">` + list.map((t) => {
+        const ans = t.answers || {};
+        const vals = Object.values(ans);
+        const yes = vals.filter((x) => x === "yes").length;
+        const flagged = QUESTIONS.filter(([k]) => ans[k] === "no" || ans[k] === "unsure")
+          .map(([k]) => `<span class="flag ${ans[k]}">${ans[k] === "no" ? "👎" : "🤷"} ${esc(SHORT[k] || k)}</span>`).join("");
+        const photos = (t.files || []).filter((f) => f.type === "photo");
+        const audios = (t.files || []).filter((f) => f.type === "audio");
+        return `<div class="tnote-card">
+          <div class="tn-head"><strong>📝 ${esc(t.name)}</strong><span>${esc(when(t.at))}</span>
+            ${vals.length ? `<button type="button" class="tn-all" data-tourview="${esc(t.id)}">👍 ${yes} of ${vals.length} · see all</button>` : ""}</div>
+          ${t.notes ? `<p class="tn-text">${esc(t.notes)}</p>` : ""}
+          ${flagged ? `<div class="tn-flags">${flagged}</div>` : ""}
+          ${photos.length ? `<div class="tn-photos">${photos.map((f) => `<a href="${fileUrl(f.id)}" target="_blank" rel="noopener"><img src="${thumbUrl(f.id, 200)}" alt="Tour photo by ${esc(t.name)}" loading="lazy"></a>`).join("")}</div>` : ""}
+          ${audios.map((f) => `<audio controls preload="none" src="${audioUrl(f.id)}"></audio>`).join("")}
+        </div>`;
+      }).join("") + `</div>`;
+    }
     let tourDraft = null;   // { id, homeId, answers, files }
     let recorder = null;    // { rec, chunks, stream, timer, started }
 
